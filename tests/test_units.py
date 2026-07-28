@@ -330,8 +330,11 @@ def test_versions_agree_across_the_package():
 
 
 def test_readme_carries_the_registry_verification_marker():
-    """The MCP Registry validates a PyPI package by finding the server name in
-    the rendered README. Removing it breaks publishing with an opaque error."""
+    """The MCP Registry validates a PyPI package by finding an EXACT marker in
+    the rendered README: 'mcp-name: <server name>'. The bare name is not enough —
+    v0.1.1 had the name and was still rejected. Removing or reformatting this
+    line breaks publishing with an error that names no file."""
     import pathlib
     sj = json.loads(pathlib.Path("server.json").read_text())
-    assert sj["name"] in pathlib.Path("README.md").read_text()
+    marker = f"mcp-name: {sj['name']}"
+    assert marker in pathlib.Path("README.md").read_text(), marker

@@ -86,7 +86,9 @@ Assistants read metrics constantly and assert significance the way people do —
 }
 ```
 
-**MCP server name:** `io.github.beepboop2025/noisefloor`
+```
+mcp-name: io.github.beepboop2025/noisefloor
+```
 
 Six tools: `ab_test`, `did_it_change`, `real_or_sampling`, `forecast_next`, `score_forecasts`, `which_metrics_matter`.
 
