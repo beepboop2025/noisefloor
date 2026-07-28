@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.beepboop2025/noisefloor",
+  "title": "noisefloor — is this number real?",
+  "description": "Check whether a metric actually changed, whether an A/B test has a winner yet (safe to peek), and whether a move is just your sample size shifting. Zero dependencies.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/beepboop2025/noisefloor",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "noisefloor",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}

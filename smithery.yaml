@@ -1,0 +1,11 @@
+# Smithery deployment manifest — https://smithery.ai/docs
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+    additionalProperties: false
+  commandFunction: |
+    (config) => ({ command: 'noisefloor-mcp', args: [] })
+build:
+  dockerfile: Dockerfile
