@@ -34,6 +34,7 @@ Issues = "https://github.com/beepboop2025/noisefloor/issues"
 
 [project.scripts]
 noisefloor-mcp = "noisefloor.mcp_server:main"
+noisefloor-mcp-http = "noisefloor.http_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
