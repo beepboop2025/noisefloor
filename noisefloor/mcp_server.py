@@ -19,7 +19,7 @@ from . import change, coverage, experiment, forecast, multiple
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "noisefloor"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.1.1"
 
 SERVER_INSTRUCTIONS = (
     "noisefloor answers one question: is this number real, or is it noise?\n\n"

@@ -294,3 +294,44 @@ def test_package_has_no_third_party_imports():
     banned = re.compile(r"^\s*(?:import|from)\s+(numpy|scipy|pandas|sklearn)\b", re.M)
     for path in pathlib.Path("noisefloor").glob("*.py"):
         assert not banned.search(path.read_text(encoding="utf-8")), path
+
+
+# ── registry manifest ───────────────────────────────────────────────────────────
+# The v0.1.0 release published fine to PyPI but was rejected by the MCP Registry
+# for a 166-character description against a 100-character limit. The limits are
+# only discoverable from the schema, so they are asserted here rather than
+# rediscovered one failed release at a time.
+
+def test_server_json_respects_registry_limits():
+    import pathlib
+    sj = json.loads(pathlib.Path("server.json").read_text())
+    assert 1 <= len(sj["description"]) <= 100, len(sj["description"])
+    assert 1 <= len(sj["title"]) <= 100, len(sj["title"])
+    assert 3 <= len(sj["name"]) <= 200
+    import re
+    assert re.match(r"^[a-zA-Z0-9.-]+/[a-zA-Z0-9._-]+$", sj["name"]), sj["name"]
+
+
+def test_versions_agree_across_the_package():
+    import pathlib
+    import re
+    sj = json.loads(pathlib.Path("server.json").read_text())
+    pyproject = pathlib.Path("pyproject.toml").read_text()
+    init = pathlib.Path("noisefloor/__init__.py").read_text()
+    mcp = pathlib.Path("noisefloor/mcp_server.py").read_text()
+    versions = {
+        "server.json": sj["version"],
+        "packages[]": {p["version"] for p in sj.get("packages", [])}.pop(),
+        "pyproject": re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1),
+        "__init__": re.search(r'__version__ = "([^"]+)"', init).group(1),
+        "mcp_server": re.search(r'SERVER_VERSION = "([^"]+)"', mcp).group(1),
+    }
+    assert len(set(versions.values())) == 1, versions
+
+
+def test_readme_carries_the_registry_verification_marker():
+    """The MCP Registry validates a PyPI package by finding the server name in
+    the rendered README. Removing it breaks publishing with an opaque error."""
+    import pathlib
+    sj = json.loads(pathlib.Path("server.json").read_text())
+    assert sj["name"] in pathlib.Path("README.md").read_text()
