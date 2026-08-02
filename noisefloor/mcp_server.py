@@ -19,7 +19,7 @@ from . import change, coverage, experiment, forecast, multiple
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "noisefloor"
-SERVER_VERSION = "0.1.2"
+SERVER_VERSION = "0.2.0"
 
 SERVER_INSTRUCTIONS = (
     "noisefloor answers one question: is this number real, or is it noise?\n\n"
@@ -183,13 +183,71 @@ def _error(mid, code, message):
     return {"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": message}}
 
 
+TOOL_TITLES = {
+    "ab_test": "Peek-safe A/B verdict",
+    "did_it_change": "Did this metric really change?",
+    "real_or_sampling": "Real effect, or sampling noise?",
+    "forecast_next": "Calibrated next-value forecast",
+    "score_forecasts": "Score past forecasts honestly",
+    "which_metrics_matter": "Rank metrics by real signal",
+}
+
+# Pure local computation on numbers the caller supplies: no state, no
+# network, no side effects. Declared so cautious clients can auto-approve.
+TOOL_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "idempotentHint": True,
+    "destructiveHint": False,
+    "openWorldHint": False,
+}
+
+# Prompts: playbooks MCP clients surface as slash commands. Each steers an
+# agent to a defensible statistical verdict instead of an eyeballed one.
+PROMPTS = {
+    "ab_test_verdict": (
+        "Is this A/B test actually done?",
+        "A peek-safe verdict on an experiment from cumulative successes "
+        "and trials, immune to the peeking that invalidates t-tests.",
+        [],
+        lambda a: (
+            "Judge the A/B experiment I describe with the noisefloor "
+            "tools: pass each arm's cumulative (successes, n) to ab_test "
+            "and report its verdict exactly — 'decided' with the winner, "
+            "or 'keep collecting' with the current evidence ratio. State "
+            "why a plain t-test would be invalid here (continuous "
+            "monitoring inflates false winners; the test martingale does "
+            "not), and refuse to call a winner the tool has not called."
+        ),
+    ),
+    "is_this_number_real": (
+        "Is this number real, or is it noise?",
+        "Route a suspicious metric movement through change detection and "
+        "sampling-noise checks before anyone acts on it.",
+        [],
+        lambda a: (
+            "For the metric movement I describe: 1) did_it_change on the "
+            "series for a calibrated change verdict; 2) real_or_sampling "
+            "on the before/after counts for whether sampling alone "
+            "explains it; 3) which_metrics_matter if several metrics "
+            "compete for attention. Report each verdict with its false "
+            "alarm rate, and state plainly when the honest answer is "
+            "'noise' or 'not enough data yet' — that is the product "
+            "working, not failing."
+        ),
+    ),
+}
+
+
 def handle(msg: dict) -> dict | None:
     method, mid = msg.get("method"), msg.get("id")
     if method == "initialize":
         return _result(mid, {
             "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
+            "capabilities": {"tools": {"listChanged": False},
+                             "prompts": {"listChanged": False}},
+            "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION,
+                           "title": "noisefloor — is this number real?",
+                           "websiteUrl": "https://github.com/beepboop2025/noisefloor"},
             "instructions": SERVER_INSTRUCTIONS})
     if method in ("notifications/initialized", "initialized"):
         return None
@@ -197,8 +255,29 @@ def handle(msg: dict) -> dict | None:
         return _result(mid, {})
     if method == "tools/list":
         return _result(mid, {"tools": [
-            {"name": n, "description": d, "inputSchema": s}
+            {"name": n, "title": TOOL_TITLES.get(n, n), "description": d,
+             "inputSchema": s,
+             "annotations": {"title": TOOL_TITLES.get(n, n),
+                             **TOOL_ANNOTATIONS}}
             for n, (d, s, _fn) in sorted(TOOLS.items())]})
+    if method == "prompts/list":
+        return _result(mid, {"prompts": [
+            {"name": n, "title": t, "description": d, "arguments": args}
+            for n, (t, d, args, _fn) in PROMPTS.items()]})
+    if method == "prompts/get":
+        params = msg.get("params") or {}
+        name = params.get("name")
+        entry = PROMPTS.get(name) if isinstance(name, str) else None
+        if entry is None:
+            return _error(mid, -32602, f"unknown prompt: {name}")
+        _t, desc, _args_spec, fn = entry
+        args = params.get("arguments")
+        if not isinstance(args, dict):
+            args = {}
+        return _result(mid, {"description": desc, "messages": [
+            {"role": "user", "content": {"type": "text", "text": fn(args)}}]})
+    if method == "resources/list":
+        return _result(mid, {"resources": []})
     if method == "tools/call":
         params = msg.get("params") or {}
         name = params.get("name")

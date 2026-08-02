@@ -3,7 +3,7 @@
   "name": "io.github.beepboop2025/noisefloor",
   "title": "noisefloor \u2014 is this number real?",
   "description": "Is this number real, or is it noise? Peek-safe A/B tests, change detection, honest forecasts.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "repository": {
     "url": "https://github.com/beepboop2025/noisefloor",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "noisefloor",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       }

@@ -39,8 +39,10 @@ def test_initialize_over_http(base_url):
         "params": {"protocolVersion": "2025-06-18", "capabilities": {},
                    "clientInfo": {"name": "test", "version": "0"}}})
     assert status == 200
-    assert reply["result"]["serverInfo"] == {"name": "noisefloor",
-                                             "version": SERVER_VERSION}
+    assert reply["result"]["serverInfo"] == {
+        "name": "noisefloor", "version": SERVER_VERSION,
+        "title": "noisefloor — is this number real?",
+        "websiteUrl": "https://github.com/beepboop2025/noisefloor"}
 
 
 def test_notification_gets_202_and_no_body(base_url):
