@@ -312,6 +312,15 @@ def test_server_json_respects_registry_limits():
     assert re.match(r"^[a-zA-Z0-9.-]+/[a-zA-Z0-9._-]+$", sj["name"]), sj["name"]
 
 
+def test_registry_manifest_advertises_the_live_http_remote():
+    import pathlib
+    sj = json.loads(pathlib.Path("server.json").read_text())
+    assert sj["remotes"] == [{
+        "type": "streamable-http",
+        "url": "https://api.seiche.info/noisefloor/mcp",
+    }]
+
+
 def test_versions_agree_across_the_package():
     import pathlib
     import re

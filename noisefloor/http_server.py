@@ -19,7 +19,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from .mcp_server import SERVER_NAME, SERVER_VERSION, handle
+from .mcp_server import SERVER_NAME, SERVER_VERSION, TOOLS, handle
 
 MAX_BODY_BYTES = 10 * 1024 * 1024  # a million-point series is ~8 MB of JSON
 
@@ -29,6 +29,25 @@ _CORS = {
     "Access-Control-Allow-Headers":
         "Content-Type, Accept, Authorization, Mcp-Session-Id, MCP-Protocol-Version",
 }
+
+
+def _log_mcp_activation(msg: dict, response: dict, origin: str) -> None:
+    """Log an allowlisted activation without retaining request contents."""
+    if msg.get("method") != "tools/call":
+        return
+    params = msg.get("params")
+    name = params.get("name") if isinstance(params, dict) else None
+    tool = name if name in TOOLS else "unknown"
+    result = response.get("result") if isinstance(response, dict) else None
+    failed = (isinstance(response, dict) and "error" in response) or (
+        isinstance(result, dict) and result.get("isError") is True)
+    outcome = "error" if failed else "success"
+    print(
+        f"mcp_activation product=noisefloor surface=public "
+        f"tool={tool} outcome={outcome} origin={origin}",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -87,7 +106,14 @@ class _Handler(BaseHTTPRequestHandler):
                 "code": -32600, "message": "expected a JSON-RPC message or batch"}})
             return
 
-        replies = [r for r in (handle(m) for m in msgs) if r is not None]
+        replies = []
+        for message in msgs:
+            reply = handle(message)
+            if reply is not None:
+                origin = ("edge" if self.headers.get("X-Forwarded-For")
+                          else "direct")
+                _log_mcp_activation(message, reply, origin)
+                replies.append(reply)
         if not replies:                      # notifications only
             self._reply(202)
         elif batch:

@@ -69,6 +69,31 @@ def test_a_real_tool_call_computes(base_url):
     assert payload["n"] == 8 and "state" in payload
 
 
+def test_real_tool_call_emits_privacy_safe_activation(base_url, capfd):
+    marker = 987654321.123456
+    capfd.readouterr()
+    status, _reply = _post(base_url, {
+        "jsonrpc": "2.0", "id": 30, "method": "tools/call",
+        "params": {"name": "did_it_change",
+                   "arguments": {"values": [marker, marker + 1]}}})
+
+    assert status == 200
+    captured = capfd.readouterr()
+    assert (
+        "mcp_activation product=noisefloor surface=public "
+        "tool=did_it_change outcome=success origin=direct"
+    ) in captured.err
+    assert str(marker) not in captured.err
+
+
+def test_discovery_does_not_emit_activation(base_url, capfd):
+    capfd.readouterr()
+    status, _reply = _post(base_url, {
+        "jsonrpc": "2.0", "id": 31, "method": "tools/list"})
+    assert status == 200
+    assert "mcp_activation" not in capfd.readouterr().err
+
+
 def test_batch_of_two_returns_two_replies(base_url):
     status, reply = _post(base_url, [
         {"jsonrpc": "2.0", "id": 10, "method": "tools/list"},
