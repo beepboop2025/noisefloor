@@ -121,8 +121,11 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._reply_json(200, replies[0])
 
-    def log_message(self, fmt: str, *args) -> None:
-        print(f"{self.address_string()} {fmt % args}", file=sys.stderr)
+    def log_message(self, _fmt: str, *_args) -> None:
+        # BaseHTTPRequestHandler includes the full request target here,
+        # including query strings. Product activation telemetry is emitted
+        # separately by _log_mcp_activation and contains no request data.
+        return
 
 
 def serve(host: str, port: int) -> ThreadingHTTPServer:

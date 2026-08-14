@@ -1,12 +1,13 @@
 """The streamable HTTP transport serves exactly what stdio serves."""
 import json
+from pathlib import Path
 import threading
 import urllib.error
 import urllib.request
 
 import pytest
 
-from noisefloor.http_server import serve
+from noisefloor.http_server import _Handler, serve
 from noisefloor.mcp_server import SERVER_VERSION, TOOLS
 
 
@@ -84,6 +85,26 @@ def test_real_tool_call_emits_privacy_safe_activation(base_url, capfd):
         "tool=did_it_change outcome=success origin=direct"
     ) in captured.err
     assert str(marker) not in captured.err
+
+
+def test_hosted_command_disables_raw_request_access_logging(capfd):
+    root = Path(__file__).resolve().parents[1]
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'noisefloor-mcp-http = "noisefloor.http_server:main"' in pyproject
+    secret = "credential-shaped-query-must-not-reach-journal"
+    handler = object.__new__(_Handler)
+
+    capfd.readouterr()
+    handler.log_message(
+        '"%s" %s %s',
+        f"POST /mcp?api_key={secret} HTTP/1.1",
+        "404",
+        "-",
+    )
+
+    captured = capfd.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
 
 
 def test_discovery_does_not_emit_activation(base_url, capfd):
