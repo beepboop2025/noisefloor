@@ -11,9 +11,8 @@ reviews and experiment readouts:
     forecast.score       how good have these forecasts actually been?
     multiple.select      I watch 40 metrics; which ones genuinely stand out?
 
-Every method is anytime-valid or distribution-free, which is the property that
-survives contact with how people really use dashboards: looking whenever they
-feel like it, and stopping when they see what they want.
+Methods have explicit assumptions. Market and narrative assessments are
+descriptive; unqualified monitoring statistics are not valid e-values.
 
 ZERO DEPENDENCIES. Standard library only, no numpy, no scipy. It installs
 anywhere Python does — lambda functions, edge runtimes, locked-down build
@@ -21,7 +20,8 @@ images — and every result is deterministic and reproducible.
 """
 from __future__ import annotations
 
-from . import change, coverage, experiment, forecast, multiple
+__version__ = "0.3.0"
 
-__version__ = "0.2.0"
-__all__ = ["change", "coverage", "experiment", "forecast", "multiple"]
+from . import change, coverage, experiment, forecast, multiple, market, narrative, adapters
+
+__all__ = ["change", "coverage", "experiment", "forecast", "multiple", "market", "narrative", "adapters"]
