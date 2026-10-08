@@ -13,7 +13,7 @@ portfolio or execute trades.
 ## Try the complete workflow
 
 ```bash
-pip install 'noisefloor>=0.3.0'
+pip install 'noisefloor>=0.3.1'
 noisefloor capabilities
 # From this repository; these fixtures are synthetic, not live market evidence:
 noisefloor market examples/market.json
@@ -93,7 +93,7 @@ Version 0.3 corrects overstated guarantees in 0.2; read the
 ## AI agents and HTTP
 
 ```json
-{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.3.0","noisefloor-mcp"]}}}
+{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.3.1","noisefloor-mcp"]}}}
 ```
 
 Eight MCP tools: `market_assessment`, `narrative_triage`, `ab_test`,
