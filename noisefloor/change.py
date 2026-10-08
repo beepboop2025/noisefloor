@@ -1,40 +1,18 @@
-"""Did this metric actually change, or is it noise?
+"""Descriptive rank-based change monitoring.
 
-THE PROBLEM. A number on a dashboard moves. Someone asks whether that is real.
-The usual answers are a hard threshold ("alert above 500"), which nobody can
-attach an error rate to, or a z-score against a rolling mean, which assumes a
-stationary Gaussian world your metric does not live in and silently breaks the
-moment the metric drifts.
+The Shiryaev-Roberts recursion R_t = (1 + R_{t-1}) * bet(p_t) compares
+successive observations with preceding observations. It is a monitoring
+statistic, NOT an e-value. Its value must not be supplied to e-BH.
 
-THE TOOL. A conformal Shiryaev-Roberts detector. Each new reading is scored
-against the metric's own past by a rank-based p-value, which needs no
-distributional assumption at all. A decreasing bet turns that into evidence, and
-the Shiryaev-Roberts recursion accumulates it:
-
-    R_t = (1 + R_{t-1}) * bet(p_t)
-
-The guarantee is the one that actually fits repeated monitoring:
-
-    P( first false alarm within n readings ) <= n / A
-    average readings between false alarms  >= A
-
-So at A = 500 the detector cries wolf at most once every 500 readings on
-average, stated per reading and valid however long it runs. Unlike a product
-martingale, the additive term means a long calm stretch does not grind the
-statistic to zero and leave it unable to react.
-
-TWO-SIDED BY DEFAULT. A metric COLLAPSING is a change too, and an upward-only
-detector is blind to half of what can go wrong: traffic vanishing, a logging
-pipeline dying, conversions going to zero. Two detectors run, one per direction.
-Merging them into a single number would be valid but halves the evidence at
-every step and costs most of the power, so each runs at full strength and the
-union over two is paid for by doubling both thresholds. The published guarantee
-is therefore exactly the one-sided guarantee it replaces.
-
-Standard library only, deterministic: the same series always gives the same
-answer, and anyone can re-run it to check.
+Rank calibration requires exchangeable observations and appropriate sequential
+rank validity. Financial observations may be serially dependent or changing in
+volatility. Geometric weighting changes the calibration too. This implementation
+therefore reports descriptive thresholds, not a universal false-alarm bound.
+A quiet result is absence of a detected departure, not proof of no change.
 """
 from __future__ import annotations
+
+from ._validation import count, number, series
 
 # A deterministic mixture of bets. Each is decreasing in p and integrates to 1,
 # so applying one to a valid p-value yields evidence that is fair under "no
@@ -42,38 +20,51 @@ from __future__ import annotations
 # creep without having to guess which is coming.
 BET_GRID = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
-WATCH_A = 100.0      # at most one false WATCH per 100 readings, on average
-ALARM_A = 500.0      # at most one false ALARM per 500 readings, on average
+WATCH_A = 100.0      # descriptive watch threshold before direction adjustment
+ALARM_A = 500.0      # descriptive alarm threshold before direction adjustment
 WARMUP = 8           # readings needed before the detector will bet at all
 STAT_CAP = 1e12      # numeric ceiling; an alarm resets long before this
 
 
 def p_value(history: list[float], x: float, *, side: str = "up",
             weights: list[float] | None = None) -> float:
-    """Rank-based p-value of x against its own past. No distribution assumed.
+    """Rank tail fraction; p-value interpretation requires exchangeability.
 
-    p = (count at least as extreme + 1) / (n + 1). Ties count toward the
-    numerator, which makes it conservative — validity is never bought with
-    optimism, and no random tie-breaking is needed, so results are reproducible.
-
-    weights (one per history entry, oldest first) let recent history count for
-    more, which is how a drifting metric stops slowly redefining "normal"
-    (nonexchangeable conformal prediction, Barber, Candes, Ramdas & Tibshirani,
-    Ann. Statist. 2023, arXiv:2202.13415).
+    With weights, this is a weighted descriptive rank, not a calibrated p-value.
+    Ties count as at least as extreme. We do not infer independence from ranks.
     """
-    extreme = (lambda s: s >= x) if side == "up" else (lambda s: s <= x)
+    history = series(history, "history")
+    x = number(x, "x")
+    if side not in ("up", "down"):
+        raise ValueError("side must be 'up' or 'down'")
+    if weights is not None:
+        weights = series(weights, "weights")
+        if len(weights) != len(history):
+            raise ValueError("weights must be parallel to history")
+        if any(weight < 0 for weight in weights):
+            raise ValueError("weights must be nonnegative")
+        number(sum(weights), "sum of weights")
+    return _rank(history, x, side, weights)
+
+
+def _rank(history, x, side, weights):
+    extreme = (lambda value: value >= x) if side == "up" else (lambda value: value <= x)
     if weights is None:
-        return (sum(1 for s in history if extreme(s)) + 1) / (len(history) + 1)
-    if len(weights) != len(history):
-        raise ValueError("weights must be parallel to history")
-    return (sum(w for s, w in zip(history, weights) if extreme(s)) + 1.0) / (
+        return (sum(1 for value in history if extreme(value)) + 1) / (len(history) + 1)
+    return (sum(weight for value, weight in zip(history, weights) if extreme(value)) + 1.0) / (
         sum(weights) + 1.0)
 
 
 def decay_weights(n: int, half_life: float | None) -> list[float] | None:
     """Geometric weights, newest last and equal to 1. None disables weighting."""
-    if not half_life or n <= 0:
+    count(n, "n")
+    if half_life is None:
         return None
+    half_life = number(half_life, "half_life")
+    if half_life <= 0:
+        raise ValueError("half_life must be positive")
+    if n == 0:
+        return []
     return [0.5 ** ((n - 1 - i) / half_life) for i in range(n)]
 
 
@@ -85,7 +76,7 @@ def _bet(p: float) -> float:
 def _median(xs: list[float]) -> float:
     s = sorted(xs)
     m = len(s) // 2
-    return s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2.0
+    return s[m] if len(s) % 2 else s[m - 1] / 2.0 + s[m] / 2.0
 
 
 def _effect(reference: list[float], x: float) -> dict:
@@ -94,13 +85,13 @@ def _effect(reference: list[float], x: float) -> dict:
         return {"direction": "flat", "delta": None, "robust_z": None,
                 "percentile": None}
     med = _median(reference)
-    mad = _median([abs(s - med) for s in reference])
-    scale = 1.4826 * mad          # comparable to a standard deviation, but robust
-    delta = x - med
+    mad = _median([number(abs(s - med), "reference deviation") for s in reference])
+    scale = number(1.4826 * mad, "reference scale")
+    delta = number(x - med, "latest departure")
     return {
         "direction": "up" if delta > 0 else "down" if delta < 0 else "flat",
         "delta": round(delta, 6),
-        "robust_z": round(delta / scale, 2) if scale > 0 else None,
+        "robust_z": round(number(delta / scale, "standardized departure"), 2) if scale > 0 else None,
         "percentile": round(100.0 * sum(1 for s in reference if s < x) / len(reference), 1),
     }
 
@@ -112,22 +103,28 @@ def scan(values: list[float], *, two_sided: bool = True,
     Returns the current state, the evidence behind it, which direction drove it,
     and the index of every past change point.
     """
+    values = series(values, "values")
+    if not isinstance(two_sided, bool):
+        raise ValueError("two_sided must be a boolean")
+    decay_weights(0, half_life)  # validate even when the history is empty
     sides = ("up", "down") if two_sided else ("up",)
-    # union bound over the directions being watched, so the headline guarantee
-    # below is the family-wise one rather than a per-direction one
+    # Preserve historical thresholds. Doubling protects the direction budget
+    # only when the underlying rank-process assumptions actually hold.
     watch_at, alarm_at = WATCH_A * len(sides), ALARM_A * len(sides)
 
     stat = {s: 0.0 for s in sides}
     reference: list[float] = []
     states, stats, alarms = [], [], []
     driver = None
+    last_reference = []
 
     for i, x in enumerate(values):
+        if i == len(values) - 1:
+            last_reference = reference[:]
         if len(reference) >= WARMUP:
             w = decay_weights(len(reference), half_life)
             for s in sides:
-                stat[s] = min((1.0 + stat[s]) * _bet(p_value(reference, x, side=s,
-                                                             weights=w)), STAT_CAP)
+                stat[s] = min((1.0 + stat[s]) * _bet(_rank(reference, x, s, w)), STAT_CAP)
         peak = max(stat.values())
         driver = max(stat, key=lambda s: stat[s]) if peak > 0 else None
         state = ("warming_up" if len(reference) < WARMUP else
@@ -141,13 +138,25 @@ def scan(values: list[float], *, two_sided: bool = True,
             stat = {s: 0.0 for s in sides}
             reference = []      # the post-change world becomes the new normal
 
-    effect = _effect(values[:-1], values[-1]) if len(values) > 1 else {}
+    effect = _effect(last_reference, values[-1]) if values else {}
     return {
         "n": len(values),
         "state": states[-1] if states else "no_data",
-        "evidence": stats[-1] if stats else None,
+        "evidence": stats[-1] if stats else None,  # compatibility alias only
+        "monitoring_statistic": stats[-1] if stats else None,
+        "statistic_type": "shiryaev_roberts",
+        "is_e_value": False,
+        "validity": "descriptive",
+        "weighted": half_life is not None,
+        "assumptions": [
+            "Observations are supplied in chronological order with consistent units.",
+            "Rank calibration would require exchangeability and sequential validity; "
+            "these are not established by this function.",
+            "Serial dependence, drift, weighting and selected windows can alter false alarms.",
+        ],
         "direction": driver,
         "effect": effect,
+        "effect_reference_size": len(last_reference),
         "change_points": alarms,
         "states": states,
         "evidence_series": stats,
@@ -156,14 +165,12 @@ def scan(values: list[float], *, two_sided: bool = True,
         "readings_since_change": (len(values) - 1 - alarms[-1]) if alarms else None,
         "reading": _reading(states[-1] if states else "no_data", effect, driver,
                             alarms, len(values)),
-        "guarantee": (
-            f"under no change, at most one false 'changed' every {alarm_at:g} readings "
-            f"on average, and P(first false flag within n readings) <= n/{alarm_at:g}; "
-            f"valid however long this runs"),
+        "guarantee": None,
+        "interpretation": "A threshold crossing requests review; it is not a trade signal or a calibrated e-value.",
         "method": (
-            "conformal Shiryaev-Roberts detector: rank-based p-value against the "
+            "descriptive Shiryaev-Roberts monitoring: rank tail fraction against the "
             "metric's own past, mixture bet, R_t = (1+R_{t-1})*bet(p_t)"
-            + (", two-sided with thresholds doubled to pay the union bound"
+            + (", two-sided with doubled descriptive thresholds"
                if two_sided else ", one-sided (upward only)")),
     }
 
@@ -183,7 +190,7 @@ def _reading(state: str, effect: dict, driver: str | None,
                     f"normal before it can judge again")
         return f"not enough history yet — needs {WARMUP} readings before it can judge"
     if state == "steady":
-        return "no change: the latest reading is within what this metric normally does"
+        return "no supported departure at the monitoring threshold; absence of an alarm is not proof of no change"
     z = effect.get("robust_z")
     where = f" ({driver})" if driver else ""
     size = f", {abs(z):.1f}x its usual spread" if z is not None else ""

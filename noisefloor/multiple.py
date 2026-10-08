@@ -1,98 +1,83 @@
-"""Watching many metrics at once without drowning in false alarms.
+"""Rank metrics; apply e-BH only to explicitly caller-confirmed valid e-values.
 
-THE PROBLEM. You monitor forty metrics. Each alert is tuned to fire wrongly
-about 5% of the time, which sounds fine until you notice that on any given day
-you expect two false alarms across the board. People respond by muting alerts,
-which is worse than having none, because now the real one is muted too.
-
-This is the multiple-comparisons problem, and dashboards have it badly. A
-per-metric guarantee is not a board guarantee, and the number a human actually
-reads off the wall is the board one.
-
-THE TOOL. e-Benjamini-Hochberg (Wang & Ramdas, JRSS-B 2022, arXiv:2009.02824).
-Given a piece of evidence per metric, sort them and select the largest k whose
-k-th largest value clears K/(alpha*k). This controls the false discovery rate —
-the expected share of flagged metrics that are flagged wrongly — at alpha.
-
-The property that matters here: it holds under ARBITRARY dependence between the
-metrics. That is not a technicality. Real metrics move together, because they
-are all downstream of the same traffic, the same deploys and the same outages.
-Any procedure that needs independence is unusable on a real dashboard, and the
-common alternative (Bonferroni with a log-factor penalty) is so conservative
-that people turn it off.
-
-Evidence values are also merged into one board-level number by arithmetic mean,
-which stays valid under arbitrary dependence too (Vovk & Wang, Ann. Statist.
-2021, arXiv:1912.06116) and is essentially the only sensible symmetric way to
-combine them. A product would explode the moment two correlated metrics moved.
-
-Standard library only, deterministic.
+A valid e-value is nonnegative and has expectation at most one under its null.
+Magnitude alone cannot establish this property. A Shiryaev-Roberts monitoring
+statistic, z-score, raw return or language-model confidence is not an e-value.
+Wang & Ramdas (2022), https://arxiv.org/abs/2009.02824.
 """
 from __future__ import annotations
+
+from ._validation import number, probability, series
 
 DEFAULT_ALPHA = 0.10
 
 
 def merge(evidence: list[float]) -> float:
-    """Combine evidence from several metrics into one board-level number.
+    """Arithmetic mean; e-value validity is conditional on valid input e-values.
 
-    The arithmetic mean of evidence values is still valid evidence even when the
-    metrics are correlated, which is why the mean is used rather than a product.
+    This function performs arithmetic only; it does not certify its inputs.
     """
-    return sum(evidence) / len(evidence) if evidence else 1.0
+    values = series(evidence, "evidence")
+    if any(value < 0 for value in values):
+        raise ValueError("evidence must be nonnegative")
+    return number(sum(value / len(values) for value in values), "merged evidence") if values else 1.0
 
 
-def select(evidence: dict[str, float], *, alpha: float = DEFAULT_ALPHA) -> dict:
-    """Which metrics are genuinely worth looking at, out of everything watched.
+def select(evidence: dict[str, float], *, alpha: float = DEFAULT_ALPHA,
+           valid_evalues: bool = False) -> dict:
+    """Rank inputs, optionally applying conditional one-board e-BH selection.
 
-    evidence maps metric name -> evidence value (for example the `evidence`
-    field from change.scan). Returns the selected names and the bar they had
-    to clear, controlling the false discovery rate at alpha.
+    ``valid_evalues=True`` is a caller assertion of a statistical contract, not
+    a certification by noisefloor. Each input must have null expectation <= 1,
+    with its null, sampling/selection procedure and observation window defined.
+    Arbitrary dependence BETWEEN valid e-values is permitted. Repeated selection
+    over time and adaptive choice of hypothesis family require further methods.
     """
-    if not 0 < alpha < 1:
-        raise ValueError("alpha must be in (0,1)")
-    if not evidence:
-        return {"selected": [], "alpha": alpha, "k": 0, "n_watched": 0,
-                "threshold": None, "board_evidence": None,
-                "reading": "nothing is being watched"}
-
-    ranked = sorted(evidence.items(), key=lambda kv: kv[1], reverse=True)
-    K = len(ranked)
+    alpha = probability(alpha, "alpha")
+    if not isinstance(valid_evalues, bool):
+        raise ValueError("valid_evalues must be a boolean")
+    if not isinstance(evidence, dict) or any(not isinstance(name, str) or not name for name in evidence):
+        raise ValueError("evidence must be a mapping with non-empty string names")
+    values = {name: number(value, f"evidence[{name}]") for name, value in evidence.items()}
+    if any(value < 0 for value in values.values()):
+        raise ValueError("evidence must be nonnegative")
+    ranked = sorted(values.items(), key=lambda item: (-item[1], item[0]))
+    total = len(ranked)
     k = 0
-    for i in range(1, K + 1):
-        if ranked[i - 1][1] >= K / (alpha * i):
-            k = i
-
+    if valid_evalues:
+        for index, (_, value) in enumerate(ranked, 1):
+            if value >= total / (alpha * index):
+                k = index
     selected = sorted(name for name, _ in ranked[:k])
-    board = merge(list(evidence.values()))
-
-    if selected:
-        reading = (f"{len(selected)} of {K} metrics worth looking at: "
-                   + ", ".join(selected))
+    assumptions = [
+        "Each input is nonnegative with null expectation at most one.",
+        "Null hypotheses, observation windows and input selection are defined before selection.",
+        "Raw change statistics are not e-values and cannot be substituted.",
+        "The bound concerns this supplied family; repeated boards are not automatically controlled.",
+        "Caller confirmation does not verify the statistical construction or provenance.",
+    ]
+    if not total:
+        reading = "nothing is being watched"
+    elif not valid_evalues:
+        reading = "inputs ranked descriptively; no discoveries selected because e-value validity is unconfirmed"
+    elif selected:
+        reading = f"{len(selected)} of {total} hypotheses selected, conditional on the supplied e-values being valid"
     else:
-        reading = (f"none of {K} metrics stands out once you account for watching "
-                   f"{K} of them at once")
-
+        reading = f"none of {total} hypotheses selected by conditional e-BH; this does not prove no effects"
     return {
         "selected": selected,
         "alpha": alpha,
         "k": k,
-        "n_watched": K,
-        "threshold": round(K / (alpha * k), 3) if k else round(K / alpha, 3),
-        "board_evidence": round(board, 4),
+        "n_watched": total,
+        "threshold": number(total / (alpha * (k or 1)), "selection threshold") if total and valid_evalues else None,
+        "board_evidence": merge(list(values.values())) if total and valid_evalues else None,
+        "descriptive_mean": merge(list(values.values())) if total else None,
+        "ranked": [{"metric": name, "evidence": value} for name, value in ranked],
+        "valid_evalues": valid_evalues,
+        "validity": "conditional_on_valid_evalues" if valid_evalues else "unverified_inputs",
+        "guarantee": (f"If every supplied value is a valid e-value for its defined null, e-BH controls the expected false-discovery proportion of this family at {alpha:g}, under arbitrary dependence between inputs.") if valid_evalues else None,
+        "assumptions": assumptions,
         "reading": reading,
-        "ranked": [{"metric": n, "evidence": round(v, 4)} for n, v in ranked],
-        "guarantee": (
-            f"among the metrics reported as worth looking at, the expected share "
-            f"flagged wrongly is at most {alpha:.0%}; holds even though the metrics "
-            f"move together"),
-        "method": (
-            "e-Benjamini-Hochberg (arXiv:2009.02824): sort the evidence, select the "
-            "largest k with the k-th value >= K/(alpha*k). Valid under arbitrary "
-            "dependence, with no extra penalty factor. Board-level evidence is the "
-            "arithmetic mean, which stays valid for dependent inputs "
-            "(arXiv:1912.06116)."),
-        "note": (
-            "a per-metric error rate is not a board error rate: watching K metrics "
-            "at a 5% individual rate means expecting K*0.05 false alarms per round"),
+        "method": "e-Benjamini-Hochberg (arXiv:2009.02824) when valid_evalues=True; descriptive ranking otherwise",
+        "note": "A selection is evidence for review, not a recommendation to trade.",
     }

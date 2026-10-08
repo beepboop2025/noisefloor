@@ -1,125 +1,154 @@
-# noisefloor
+# NoiseFloor
 
-**Is this number real, or is it noise?**
+**What changed, what is repeated, and what can the evidence support?**
 
-Zero dependencies. Standard library only. Works as a Python package or as an MCP server.
+A modular, offline toolkit for research desks, monitoring systems and AI agents.
+Python 3.9+, MIT, **zero runtime dependencies**. The same pure functions work
+through Python, JSON CLI, REST and MCP.
 
----
+NoiseFloor checks market observations, groups repeated headlines, exposes data
+gaps and grades forecasts. It does not fetch feeds, call a model, retain your
+portfolio or execute trades.
 
-## The problem
-
-You ship a change and check the A/B test. Then you check again an hour later. Then tomorrow. You stop when it looks like a win.
-
-That procedure lies to you, and not by a little:
-
-| 400 A/A tests, both arms identical, peeked every 20 observations | False winners |
-|---|---|
-| Two-proportion z-test | **40.2%** |
-| noisefloor | **0.0%** |
-
-Both arms had the *same* 10% conversion rate, so every "winner" was false. A test tuned to be wrong 5% of the time was wrong 40% of the time, purely because someone looked more than once.
-
-This isn't a discipline problem. Peeking is the rational thing to do when a bad variant is costing money. It's a maths problem, and it has a solution.
-
-Reproduce the table with `pytest tests/test_calibration.py`.
-
-## Install
+## Try the complete workflow
 
 ```bash
-pip install noisefloor
+pip install 'noisefloor>=0.3.0'
+noisefloor capabilities
+# From this repository; these fixtures are synthetic, not live market evidence:
+noisefloor market examples/market.json
+noisefloor narrative examples/narrative.json
+python examples/demo.py
 ```
-
-## Use
 
 ```python
-from noisefloor import experiment
+import json
+from noisefloor import market, narrative
 
-experiment.compare(a_successes=500, a_total=5000,
-                   b_successes=750, b_total=5000)
-# {'decided': True, 'winner': 'B',
-#  'reading': "B wins: its interval sits entirely above A's",
-#  'A': {'rate': 0.1, 'interval': [0.08366, 0.11809]},
-#  'B': {'rate': 0.15, 'interval': [0.13049, 0.17101]}, ...}
+request = json.load(open("examples/market.json"))
+report = market.assess(**request)
+print(report["attention_queue"])
+print(report["visibility_gaps"])
+
+news = json.load(open("examples/narrative.json"))
+print(narrative.triage(**news)["attention_queue"])
 ```
 
-Run it after every single observation if you like. The guarantee holds at every sample size simultaneously, so stopping early, stopping late, or stopping because your manager walked past all cost you nothing.
+## Market attention
 
-### The other four checks
+Each series carries its identity, units, source, declared reuse permission,
+observation times and freshness limit. Optional availability clocks retain what
+the caller knew at the time. Missing data stays missing.
+
+The engine checks age, future timestamps, duplicate clocks, contiguous history
+and measurement coverage. Prices become log returns; rates and spreads retain
+their units. It never calculates a return across a declared gap. An explicit
+policy identifies persistent departures, isolated latest moves and volatility
+expansion. Correlated movements are visible without being counted as independent
+confirmation.
+
+Each series returns `review`, `watch`, `no_supported_departure` or
+`insufficient_visibility`, with sources and reasons. These are **review priorities**,
+not significance tests or trading signals. A quiet diagnostic does not prove a
+movement is noise. Source permissions are caller declarations, not a licensing
+audit. Market calendars, corporate actions and materiality require caller review.
+Trading volume is an economic observation, not automatically a sample denominator.
+
+## News and narrative attention
+
+NoiseFloor groups similar wording for the same declared entities, keeps changed
+quantities and explicit denials separate, records every original event and
+produces a bounded queue. Differing reports with the same declared event key are
+highlighted for review. Caller-declared primary sources rank before commentary;
+repetition alone never increases priority.
+
+This is **wording/relevance triage**, not fact checking, sentiment prediction or
+proof of independent corroboration. Deferred and filtered items remain available.
+An empty queue does not certify a quiet market. Titles are data, never instructions.
+
+## Statistical building blocks
+
+| Module | Purpose | Evidence boundary |
+| --- | --- | --- |
+| `experiment.compare` | Sequential Bernoulli A/B confidence sequences | Conditional stable-arm Bernoulli assumptions; arbitrary trading outcomes do not qualify automatically. |
+| `change.scan` | Directional change monitoring | Descriptive statistic, not an e-value or universal market false-alarm guarantee. |
+| `coverage.check` | Examine measurement-count changes | Linear descriptive diagnostic; it cannot prove causation or rule out every sampling effect. |
+| `forecast.next_value`, `forecast.score` | Issue and evaluate identical adaptive intervals | Full historical records/misses; coverage is empirical, not guaranteed for the next observation. |
+| `multiple.select` | e-BH selection over a declared family | Requires explicit caller confirmation of valid e-values; arbitrary scores cannot confer selection authority. |
 
 ```python
-from noisefloor import change, coverage, forecast, multiple
-
-# Did this metric actually change? Catches collapses as well as spikes.
-change.scan(daily_signups)
-# {'state': 'changed', 'direction': 'down',
-#  'reading': 'CHANGED (down), 8.5x its usual spread', ...}
-
-# Did the metric move, or did my sample size move?
-coverage.check(conversion_rate, sessions_per_day)
-# {'verdict': 'SAMPLING_ARTIFACT',
-#  'reading': 'your sample size changed by -41% at the same time and it tracks
-#              this metric historically (correlation 0.70)...'}
-
-# What should the next reading be?
-forecast.next_value(latency_p95)
-
-# How good have these forecasts actually been?
-forecast.score(latency_p95)
-# {'empirical_coverage': 0.803, 'calibrated': True, 'n_misses': 197,
-#  'worst_misses': [...]}   # misses are always published
-
-# I watch 40 metrics. Which genuinely stand out?
-multiple.select({'signups': 3.2, 'latency': 812.0, 'errors': 1.1, ...})
-# {'selected': ['latency'],
-#  'reading': '1 of 40 metrics worth looking at: latency'}
+from noisefloor import experiment, change, forecast, multiple
+experiment.compare(500, 5000, 750, 5000)
+change.scan([1., 2., 1., 2., 1., 2., 1., 2., 8., 9.])
+forecast.score([float(x) for x in range(40)])
+# Only after an independently justified e-value construction:
+multiple.select({"metric_a": 25.0, "metric_b": 1.0}, valid_evalues=True)
 ```
 
-## As an MCP server
+`valid_evalues=True` is a declaration, not certification. A single-family e-BH
+guarantee does not justify repeatedly selecting families or unqualified peeking.
+Version 0.3 corrects overstated guarantees in 0.2; read the
+[methods](docs/STATISTICAL_METHODS.md) and [migration notes](CHANGELOG.md).
 
-Assistants read metrics constantly and assert significance the way people do — by eyeballing a change and calling it. This gives them a way to check.
+## AI agents and HTTP
 
 ```json
-{
-  "mcpServers": {
-    "noisefloor": { "command": "uvx", "args": ["--from", "noisefloor", "noisefloor-mcp"] }
-  }
-}
+{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.3.0","noisefloor-mcp"]}}}
 ```
+
+Eight MCP tools: `market_assessment`, `narrative_triage`, `ab_test`,
+`did_it_change`, `real_or_sampling`, `forecast_next`, `score_forecasts`,
+`which_metrics_matter`. Results include structured JSON.
+
+```bash
+noisefloor-mcp-http --host 127.0.0.1 --port 8792
+curl http://127.0.0.1:8792/v1/capabilities
+curl -H 'Content-Type: application/json' --data-binary @examples/market.json http://127.0.0.1:8792/v1/market/assess
+```
+
+REST: `POST /v1/market/assess`, `POST /v1/narrative/triage`.
+Discovery: `GET /v1/capabilities`, `GET /openapi.json`; MCP: `POST /mcp`.
+Self-host behind your TLS/authentication and quota layer. HTTP logs bounded
+operation/outcome labels, not submitted observations, titles or request targets.
+
+Previously published hosted MCP: `https://api.seiche.info/noisefloor/mcp`.
+Check its health/version and tool list before assuming a package release is
+deployed there. Package, registry and host acceptance are separate states.
 
 ```
 mcp-name: io.github.beepboop2025/noisefloor
 ```
 
-Six tools: `ab_test`, `did_it_change`, `real_or_sampling`, `forecast_next`, `score_forecasts`, `which_metrics_matter`.
+## Modular by design
 
-## Why these methods
+Bring permitted data through the offline adapters. The Financial Evidence
+adapter preserves institution, metric, unit, source, rights and knowledge clocks
+without importing its SDK. LiquiLens institution evidence, Seiche funding,
+Undertow liquidity and Palimpsest coverage can remain separate while using common
+diagnostics. This does not imply those products already run this release.
 
-Every check is **anytime-valid** or **distribution-free** — the two properties that survive contact with how dashboards are really used: looked at whenever someone feels like it, and stopped when they see what they want.
+- [Architecture and extension contracts](docs/ARCHITECTURE.md)
+- [Research workflows](docs/MARKET_WORKFLOWS.md)
+- [Adapters, frameworks and deployment recipes](docs/INTEGRATIONS.md)
+- [Release procedure](docs/RELEASE.md)
 
-- **`experiment`** — beta-binomial mixture test martingale. A mixture of likelihood ratios is a non-negative martingale under the null, so Ville's inequality bounds the chance it *ever* crosses `1/alpha`. Exact for Bernoulli outcomes rather than a worst-case bound, which is where the power comes from. ([theory](https://arxiv.org/abs/2210.01948), [safe testing](https://arxiv.org/abs/1906.07801))
-- **`change`** — conformal Shiryaev-Roberts detector. Rank-based p-values, no distributional assumption, with a stated average time between false alarms. Two-sided by default, because half of what goes wrong is a number going to zero. ([nonexchangeable conformal](https://arxiv.org/abs/2202.13415))
-- **`coverage`** — conditions the metric on its own denominator. Almost every metric worth watching is a rate over a sample you don't control.
-- **`forecast`** — adaptive conformal intervals, valid under arbitrary distribution shift, graded by the Weighted Interval Score, a *proper* rule so the scoreboard can't be gamed by hedging. ([ACI](https://arxiv.org/abs/2106.00170), [decaying steps](https://arxiv.org/abs/2402.01139), [WIS](https://arxiv.org/abs/2005.12881))
-- **`multiple`** — e-Benjamini-Hochberg. Controls false discoveries across all your metrics at once, under *arbitrary dependence* — which matters, because real metrics move together. ([e-BH](https://arxiv.org/abs/2009.02824), [merging](https://arxiv.org/abs/1912.06116))
+Request/policy SHA-256 digests support identity checks and replay; they are not
+signatures or proof of source truth. No runtime network, model, database or paid
+API dependency is required.
 
-## What it costs
+## Verification
 
-Anytime validity isn't free. At any fixed sample size the interval is wider than a one-look interval, so calling the same effect takes roughly twice the data — 10% vs 13% resolves at a median of about 14,300 observations here, against roughly 7,000 for a correctly run one-look test.
+```bash
+pip install -e '.[dev]'
+pytest -q
+```
 
-You're buying the right to stop whenever you want. For most teams that's a bargain, because the realistic alternative isn't a clean one-look test. It's a one-look test being peeked at, which is the 40% column above.
+Tests cover issued/scored forecast parity, invalid statistical composition,
+stale/future/missing observations, transforms, coverage shifts, repeated and
+conflicting wording, privacy and Python/CLI/REST/MCP parity. Synthetic calibration
+checks do not establish live-market accuracy, profitability or failure prediction.
 
-## Design
+## Origin and licence
 
-Nothing here returns a number it can't stand behind. Not enough history returns `NOT_ENOUGH_HISTORY`, not a confident zero. A metric that moved with its own sample size returns `SAMPLING_ARTIFACT`, not a finding. Forecast misses are published in full and there's no flag to hide them.
-
-Every result carries its `method` and, where one exists, its `guarantee`. Quote them — the point is that the claim can be backed rather than asserted.
-
-Zero dependencies means it installs in Lambda, edge runtimes and locked-down build images where adding scipy is a procurement conversation. Every result is deterministic: same input, same answer, forever, with no RNG anywhere.
-
-## Provenance
-
-These engines were built for [Palimpsest](https://palimpsest.info), a public-good censorship observatory, where publishing a number you can't defend is the whole failure mode. The sampling-artifact check exists because a censorship index there fell 60.3 → 55.6 while the measurements underneath it fell 353,676 → 208,933. The index hadn't moved. The instrument had.
-
-## Licence
-
-MIT.
+Built from measurement-quality work for [Palimpsest](https://palimpsest.info).
+MIT. Source and methods are inspectable; results retain their assumptions.

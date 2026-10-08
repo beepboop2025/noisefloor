@@ -1,11 +1,9 @@
-"""The calibration claims, as runnable tests.
+"""Deterministic simulation checks under specific synthetic data generators.
 
-Everything noisefloor sells rests on a handful of empirical promises: that
-peeking is safe, that it still finds real effects, and that the ranges cover
-what they say. Those promises are measured here rather than asserted, so the
-numbers quoted in the README and docstrings cannot quietly stop being true.
-
-These are slower than unit tests by design. They are the ones that matter.
+These checks detect numerical or behavioral regressions. They are not evidence
+of performance, coverage, profitability or false-alarm control on market data.
+Bernoulli confidence-sequence guarantees require their stated sampling model;
+change and forecast diagnostics expose no universal calibration guarantee.
 """
 import random
 
@@ -85,7 +83,7 @@ def test_no_winner_is_called_on_tiny_samples():
     assert compare(1, 3, 2, 3)["decided"] is False
 
 
-# ── forecast ranges cover what they claim ───────────────────────────────────────
+# ── forecast ranges evaluated on one stationary synthetic fixture ───────────────────────────────────────
 
 def test_forecast_coverage_converges_to_nominal():
     rng = random.Random(7)
@@ -104,10 +102,10 @@ def test_short_series_is_reported_as_not_yet_calibrated_rather_than_claimed_good
     assert r["calibrated"] == (abs(r["empirical_coverage"] - 0.80) <= 0.05)
 
 
-# ── change detection holds its stated false-alarm rate ──────────────────────────
+# ── descriptive change detection on independent synthetic observations ──────────────────────────
 
-def test_steady_metric_does_not_trigger_beyond_its_budget():
-    """Under no change, false alarms must respect the stated rate."""
+def test_iid_fixture_retains_low_empirical_alarm_frequency():
+    """A bounded simulation regression, not a distribution-free guarantee."""
     trials, alarms = 200, 0
     for t in range(trials):
         rng = random.Random(11 + t)

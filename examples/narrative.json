@@ -1,0 +1,128 @@
+{
+  "events": [
+    {
+      "id": "synthetic-primary",
+      "title": "Example Company raises dividend 10 percent",
+      "published_at": "2026-10-08T06:00:00Z",
+      "available_at": "2026-10-08T06:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-issuer",
+        "kind": "primary",
+        "family": "synthetic-issuer",
+        "url": "https://issuer.example.invalid/notice"
+      },
+      "event_key": "synthetic-dividend"
+    },
+    {
+      "id": "synthetic-wire-copy",
+      "title": "Example Company raises dividend 10 percent",
+      "published_at": "2026-10-08T07:00:00Z",
+      "available_at": "2026-10-08T07:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-wire",
+        "kind": "reporting",
+        "family": "synthetic-syndicate",
+        "url": "https://wire.example.invalid/story"
+      },
+      "event_key": "synthetic-dividend"
+    },
+    {
+      "id": "synthetic-syndicated-copy",
+      "title": "Example Company raises dividend 10 percent",
+      "published_at": "2026-10-08T08:00:00Z",
+      "available_at": "2026-10-08T08:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-relay",
+        "kind": "reporting",
+        "family": "synthetic-syndicate",
+        "url": "https://relay.example.invalid/story"
+      },
+      "event_key": "synthetic-dividend"
+    },
+    {
+      "id": "synthetic-changed-number",
+      "title": "Example Company raises dividend 20 percent",
+      "published_at": "2026-10-08T08:00:00Z",
+      "available_at": "2026-10-08T08:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-commentary",
+        "kind": "commentary",
+        "family": "synthetic-commentary"
+      },
+      "event_key": "synthetic-dividend"
+    },
+    {
+      "id": "synthetic-denial",
+      "title": "Example Company denies dividend increase",
+      "published_at": "2026-10-08T08:00:00Z",
+      "available_at": "2026-10-08T08:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-issuer",
+        "kind": "primary",
+        "family": "synthetic-issuer",
+        "url": "https://issuer.example.invalid/notice"
+      }
+    },
+    {
+      "id": "synthetic-unmapped",
+      "title": "Unattributed market claim requires an entity match",
+      "published_at": "2026-10-08T08:00:00Z",
+      "available_at": "2026-10-08T08:01:00Z",
+      "entities": [],
+      "source": {
+        "id": "synthetic-commentary",
+        "kind": "commentary",
+        "family": "synthetic-commentary"
+      }
+    },
+    {
+      "id": "synthetic-other-entity",
+      "title": "Other Company reports routine update",
+      "published_at": "2026-10-08T08:00:00Z",
+      "available_at": "2026-10-08T08:01:00Z",
+      "entities": [
+        "OTHER"
+      ],
+      "source": {
+        "id": "synthetic-wire",
+        "kind": "reporting",
+        "family": "synthetic-syndicate",
+        "url": "https://wire.example.invalid/story"
+      }
+    },
+    {
+      "id": "synthetic-future",
+      "title": "Example Company announces new guidance",
+      "published_at": "2026-10-08T11:00:00Z",
+      "available_at": "2026-10-08T11:01:00Z",
+      "entities": [
+        "EXAMPLE"
+      ],
+      "source": {
+        "id": "synthetic-issuer",
+        "kind": "primary",
+        "family": "synthetic-issuer",
+        "url": "https://issuer.example.invalid/notice"
+      }
+    }
+  ],
+  "as_of": "2026-10-08T10:00:00Z",
+  "focus": [
+    "EXAMPLE"
+  ]
+}

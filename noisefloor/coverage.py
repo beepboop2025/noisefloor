@@ -1,165 +1,136 @@
-"""Did the metric move, or did the thing you measured it with move?
+"""Descriptive checks for changes in a metric's measurement denominator.
 
-THE PROBLEM, from a real incident. A censorship-measurement board watched an
-index fall from 60.3 to 55.6 over three days — a clear, statistically detectable
-move. Read naively it said the censorship had eased. But the number of
-measurements underneath it had fallen from 353,676 to 208,933 over the same
-window. The index was a ratio over a sample nobody controlled, and the sample
-had thinned. The move was partly in the measuring instrument, not the world.
-
-Almost every metric worth watching is a rate over a sample you do not control:
-conversion over sessions, error rate over requests, satisfaction over responses,
-click-through over impressions. When the denominator moves, the ratio moves for
-reasons that have nothing to do with the thing you care about. This is the most
-common way a dashboard tells a confident lie.
-
-THE TOOL. Three questions in order:
-
-  1. Did the metric move?        robust departure from its own past
-  2. Did its denominator move?   the same measure on the sample size
-  3. Does the move SURVIVE conditioning on the denominator?
-
-Step 3 fits the metric against its denominator over the history and asks whether
-the latest reading is still unusual once that relationship is accounted for. If
-the departure largely disappears, the verdict is SAMPLING_ARTIFACT. If it
-survives, the verdict is REAL — and it is now stronger evidence than the raw
-move was, because the obvious confound has been ruled out.
-
-Conditioning runs whenever the fit is informative, NOT only when the denominator
-itself looks unusual. That distinction matters: in the incident above the index
-correlated 0.70 with its own measurement count, so a perfectly ordinary-sized
-dip in coverage still moved the published number. Gating on "did the denominator
-do something strange" would have waved it straight through.
-
-Deliberately conservative: the fit quality and sample count are published with
-every verdict, and a weak fit yields UNCLEAR rather than licensing either
-conclusion.
-
-Standard library only, deterministic.
+A historical linear association is a possible explanation, not a causal test.
+Changing market volume may itself carry economic information: it must not be
+confused with missing measurements. No statistical error-rate guarantee is made.
 """
 from __future__ import annotations
 
-MIN_PAIRS = 10          # below this a fit is not worth trusting
-MOVE_Z = 2.0            # robust departure at which a series counts as having moved
-GOOD_FIT_R = 0.30       # weaker correlation than this makes conditioning useless
-SURVIVES_FRAC = 0.5     # keep this share of the raw departure and the move stands
+from ._validation import number, series
+
+MIN_PAIRS = 10
+MOVE_Z = 2.0
+GOOD_FIT_R = 0.30
+SURVIVES_FRAC = 0.5
 
 
 def _median(xs: list[float]) -> float:
-    s = sorted(xs)
-    m = len(s) // 2
-    return s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2.0
+    values = sorted(xs)
+    middle = len(values) // 2
+    return values[middle] if len(values) % 2 else values[middle - 1] / 2 + values[middle] / 2
 
 
 def _robust_z(reference: list[float], x: float) -> float | None:
     if not reference:
         return None
-    med = _median(reference)
-    scale = 1.4826 * _median([abs(s - med) for s in reference])
-    return (x - med) / scale if scale > 0 else None
+    median = _median(reference)
+    deviations = [number(abs(value - median), "reference deviation") for value in reference]
+    scale = number(1.4826 * _median(deviations), "reference scale")
+    return number((x - median) / scale, "standardized departure") if scale > 0 else None
 
 
 def _fit(xs: list[float], ys: list[float]) -> tuple[float, float, float] | None:
-    """Least squares y = a + b*x, plus correlation. None if x never varies."""
     n = len(xs)
     if n < 2:
         return None
-    mx, my = sum(xs) / n, sum(ys) / n
-    sxx = sum((x - mx) ** 2 for x in xs)
-    syy = sum((y - my) ** 2 for y in ys)
-    if sxx <= 0:
-        return None
-    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
-    b = sxy / sxx
-    r = sxy / ((sxx * syy) ** 0.5) if syy > 0 else 0.0
-    return (my - b * mx, b, r)
+    mx = number(sum(x / n for x in xs), "mean denominator")
+    my = number(sum(y / n for y in ys), "mean metric")
+    try:
+        sxx = number(sum((x - mx) ** 2 for x in xs), "denominator variation")
+        syy = number(sum((y - my) ** 2 for y in ys), "metric variation")
+        if sxx <= 0:
+            return None
+        sxy = number(sum((x - mx) * (y - my) for x, y in zip(xs, ys)), "covariation")
+        slope = number(sxy / sxx, "slope")
+        correlation = (sxy / sxx ** 0.5) / syy ** 0.5 if syy > 0 else 0.0
+        return number(my - slope * mx, "intercept"), slope, max(-1.0, min(1.0, correlation))
+    except OverflowError as exc:
+        raise ValueError("values are too large for denominator conditioning") from exc
 
 
 def check(metric: list[float], sample_size: list[float]) -> dict:
-    """Judge the latest reading. Both lists are parallel, oldest first."""
-    n = min(len(metric), len(sample_size))
-    metric, sample_size = metric[:n], sample_size[:n]
+    """Describe the latest paired reading without inferring causality.
+
+    Both lists must have the same length and represent aligned observations.
+    Legacy REAL/SAMPLING_ARTIFACT codes are descriptive compatibility labels;
+    consult ``assessment`` and ``validity`` rather than treating them as proof.
+    """
+    metric = series(metric, "metric")
+    sample_size = series(sample_size, "sample_size")
+    if len(metric) != len(sample_size):
+        raise ValueError("metric and sample_size must have the same length and alignment")
+    if any(value <= 0 for value in sample_size):
+        raise ValueError("sample_size must be positive; zero coverage is missing data, not a valid rate")
+    n = len(metric)
+    out = {
+        "n_pairs": n,
+        "validity": "descriptive",
+        "guarantee": None,
+        "is_causal": False,
+        "method": "median-absolute-deviation departure and historical linear denominator association",
+        "caveats": [
+            "Linear association does not establish or rule out a sampling explanation.",
+            "The latest observation is excluded from the historical fit.",
+            "Serial dependence, sample composition and nonlinear relationships are not controlled.",
+            "Market volume and measurement coverage are different quantities.",
+            "REAL and SAMPLING_ARTIFACT are legacy descriptive labels, not statistical guarantees.",
+        ],
+    }
     if n < MIN_PAIRS:
-        return {"verdict": "NOT_ENOUGH_HISTORY", "n_pairs": n,
-                "reading": f"need {MIN_PAIRS} paired readings to check this, have {n}"}
+        out.update(verdict="NOT_ENOUGH_HISTORY", assessment="insufficient_history",
+                   reading=f"need {MIN_PAIRS} paired readings to check this, have {n}")
+        return out
 
     m_ref, d_ref = metric[:-1], sample_size[:-1]
     m_now, d_now = metric[-1], sample_size[-1]
+    delta = number(m_now - _median(m_ref), "metric departure")
     z_metric = _robust_z(m_ref, m_now)
     z_denom = _robust_z(d_ref, d_now)
     med_d = _median(d_ref)
-
-    out = {
-        "n_pairs": n,
-        "metric_now": round(m_now, 6),
-        "sample_size_now": round(d_now, 6),
+    out.update({
+        "metric_now": m_now,
+        "sample_size_now": d_now,
         "metric_departure": None if z_metric is None else round(z_metric, 2),
+        "metric_delta": delta,
+        "zero_reference_spread": z_metric is None,
         "sample_size_departure": None if z_denom is None else round(z_denom, 2),
-        "sample_size_change_pct": (round(100.0 * (d_now - med_d) / abs(med_d), 1)
-                                   if med_d else None),
-    }
-
-    if z_metric is None or abs(z_metric) < MOVE_Z:
-        out["verdict"] = "NO_MOVE"
-        out["reading"] = "the metric has not departed from its own history"
+        "sample_size_change_pct": number(100 * ((d_now - med_d) / med_d), "denominator change"),
+    })
+    if (z_metric is None and delta == 0) or (z_metric is not None and abs(z_metric) < MOVE_Z):
+        out.update(verdict="NO_MOVE", assessment="no_supported_departure",
+                   reading="no departure at the descriptive threshold; this does not prove stability")
+        return out
+    if z_metric is None:
+        out.update(verdict="UNCLEAR", assessment="departure_from_zero_spread",
+                   reading="the latest value differs from a history with zero robust spread; a standardized effect cannot be estimated")
         return out
 
     fit = _fit(d_ref, m_ref)
     if fit is None:
-        out["verdict"] = "UNCLEAR"
-        out["reading"] = "the sample size never varies here, so it cannot be ruled in or out"
+        out.update(verdict="UNCLEAR", assessment="denominator_explanation_unidentified",
+                   reading="the metric departed from history, but a constant denominator cannot identify a sampling relationship")
         return out
-    a, b, r = fit
-    out["fit"] = {"slope": round(b, 8), "intercept": round(a, 6),
-                  "correlation": round(r, 3)}
-
-    if abs(r) < GOOD_FIT_R:
-        out["verdict"] = "REAL"
-        out["reading"] = (f"the move is real: sample size does not track this metric "
-                          f"historically (correlation {r:.2f}), so it cannot explain it")
+    intercept, slope, correlation = fit
+    out["fit"] = {"slope": slope, "intercept": intercept, "correlation": round(correlation, 3)}
+    out["denominator_extrapolation"] = not min(d_ref) <= d_now <= max(d_ref)
+    if abs(correlation) < GOOD_FIT_R:
+        out.update(verdict="UNCLEAR", assessment="weak_linear_association",
+                   reading=f"a departure is present, but the weak linear association ({correlation:.2f}) cannot establish or exclude a sampling explanation")
         return out
 
-    resid_ref = [y - (a + b * x) for x, y in zip(d_ref, m_ref)]
-    resid_now = m_now - (a + b * d_now)
-    z_resid = _robust_z(resid_ref, resid_now)
-    out["departure_after_conditioning"] = None if z_resid is None else round(z_resid, 2)
-
-    if z_resid is None:
-        spread = max((abs(v) for v in resid_ref), default=0.0)
-        if abs(resid_now) <= max(spread, 1e-9) * 10:
-            out["verdict"] = "SAMPLING_ARTIFACT"
-            out["reading"] = (
-                f"the metric is a near-exact function of its sample size on this history "
-                f"(correlation {r:.2f}) and the latest reading sits on that same "
-                f"relationship: the move is the sample, not the world")
-        else:
-            out["verdict"] = "REAL"
-            out["reading"] = (f"sample size explained this metric exactly until now "
-                              f"(correlation {r:.2f}); the latest reading breaks that "
-                              f"relationship, which is itself the finding")
-    elif abs(z_resid) >= abs(z_metric) * SURVIVES_FRAC and abs(z_resid) >= MOVE_Z:
-        out["verdict"] = "REAL"
-        out["reading"] = (
-            f"the move survives once sample size is accounted for "
-            f"({z_metric:.1f} -> {z_resid:.1f}); the sample tracks this metric "
-            f"(correlation {r:.2f}) and absorbs part of the move, but not the bulk")
+    residuals = [number(y - (intercept + slope * x), "historical residual") for x, y in zip(d_ref, m_ref)]
+    residual = number(m_now - (intercept + slope * d_now), "latest residual")
+    z_residual = _robust_z(residuals, residual)
+    out["departure_after_conditioning"] = None if z_residual is None else round(z_residual, 2)
+    if z_residual is None:
+        scale = max((abs(value) for value in residuals), default=0.0)
+        explained = abs(residual) <= max(scale, 1e-9) * 10
     else:
-        out["verdict"] = "SAMPLING_ARTIFACT"
-        out["reading"] = (
-            f"your sample size changed by {out['sample_size_change_pct']}% at the same "
-            f"time and it tracks this metric historically (correlation {r:.2f}). "
-            f"Accounting for it shrinks the move from {z_metric:.1f} to {z_resid:.1f}. "
-            f"This is not evidence that the underlying thing changed.")
-
-    out["method"] = (
-        "robust (median-absolute-deviation) departure of the metric and of its sample "
-        "size, then least squares metric ~ a + b*sample_size over the history with the "
-        "latest residual scored against past residuals. Conditioning runs whenever the "
-        f"fit is informative (|correlation| >= {GOOD_FIT_R}), not only when the sample "
-        "size itself looks unusual.")
-    out["caveats"] = [
-        "rules out the SAMPLE-SIZE confound specifically, not every confound",
-        "the fit is linear and history is finite; correlation and pair count are "
-        "published with every verdict so the call can be judged",
-    ]
+        explained = not (abs(z_residual) >= abs(z_metric) * SURVIVES_FRAC and abs(z_residual) >= MOVE_Z)
+    if explained:
+        out.update(verdict="SAMPLING_ARTIFACT", assessment="consistent_with_denominator_association",
+                   reading="the movement is consistent with the historical denominator relationship; this is not evidence of a causal sampling artifact")
+    else:
+        out.update(verdict="REAL", assessment="departure_survives_linear_conditioning",
+                   reading="the departure remains after descriptive linear conditioning; this does not establish its cause or market importance")
     return out

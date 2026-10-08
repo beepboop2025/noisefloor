@@ -71,7 +71,7 @@ def test_evidence_is_zero_against_the_observed_rate_direction():
 def test_impossible_rates_are_ruled_out_immediately():
     assert experiment.log_evalue(5, 10, 0.0) == math.inf
     assert experiment.log_evalue(5, 10, 1.0) == math.inf
-    assert experiment.log_evalue(0, 10, 0.0) == 0.0
+    assert experiment.log_evalue(0, 10, 0.0) == pytest.approx(-math.log(11))
 
 
 # ── change ──────────────────────────────────────────────────────────────────────
@@ -142,10 +142,10 @@ def test_pure_sampling_artifact_is_caught():
     assert "not evidence" in r["reading"] or "not the world" in r["reading"]
 
 
-def test_real_move_with_stable_sample_is_kept():
+def test_weak_denominator_association_does_not_prove_a_real_move():
     den = [1000.0 + (i % 4) for i in range(40)] + [1001.0]
     met = [50.0 + (i % 3) * 0.1 for i in range(40)] + [95.0]
-    assert coverage.check(met, den)["verdict"] == "REAL"
+    assert coverage.check(met, den)["verdict"] == "UNCLEAR"
 
 
 def test_flat_metric_is_no_move():
@@ -211,13 +211,13 @@ def test_ordinary_evidence_selects_nothing():
 def test_threshold_follows_the_published_formula():
     ev = {f"m{i}": 1.0 for i in range(9)}
     ev["big"] = 101.0
-    r = multiple.select(ev, alpha=0.1)
+    r = multiple.select(ev, alpha=0.1, valid_evalues=True)
     assert r["selected"] == ["big"] and r["threshold"] == 100.0
 
 
 def test_watching_more_metrics_raises_the_bar():
-    alone = multiple.select({"x": 500.0})
-    crowded = multiple.select({"x": 500.0, **{f"m{i}": 1.0 for i in range(30)}})
+    alone = multiple.select({"x": 500.0}, valid_evalues=True)
+    crowded = multiple.select({"x": 500.0, **{f"m{i}": 1.0 for i in range(30)}}, valid_evalues=True)
     assert crowded["threshold"] > alone["threshold"]
 
 
@@ -251,7 +251,8 @@ def test_server_initializes_and_lists_every_tool():
     assert replies[0]["result"]["serverInfo"]["name"] == "noisefloor"
     names = {t["name"] for t in replies[1]["result"]["tools"]}
     assert names == {"ab_test", "did_it_change", "real_or_sampling",
-                     "forecast_next", "score_forecasts", "which_metrics_matter"}
+                     "forecast_next", "score_forecasts", "which_metrics_matter",
+                     "market_assessment", "narrative_triage"}
 
 
 def test_server_runs_a_tool_and_returns_json():
@@ -327,13 +328,13 @@ def test_versions_agree_across_the_package():
     sj = json.loads(pathlib.Path("server.json").read_text())
     pyproject = pathlib.Path("pyproject.toml").read_text()
     init = pathlib.Path("noisefloor/__init__.py").read_text()
-    mcp = pathlib.Path("noisefloor/mcp_server.py").read_text()
+    from noisefloor.mcp_server import SERVER_VERSION
     versions = {
         "server.json": sj["version"],
         "packages[]": {p["version"] for p in sj.get("packages", [])}.pop(),
         "pyproject": re.search(r'^version = "([^"]+)"', pyproject, re.M).group(1),
         "__init__": re.search(r'__version__ = "([^"]+)"', init).group(1),
-        "mcp_server": re.search(r'SERVER_VERSION = "([^"]+)"', mcp).group(1),
+        "mcp_server": SERVER_VERSION,
     }
     assert len(set(versions.values())) == 1, versions
 

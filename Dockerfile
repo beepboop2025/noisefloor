@@ -1,5 +1,5 @@
 # Minimal image: the package has zero runtime dependencies, so this is
-# essentially just Python plus six source files.
+# essentially just Python plus the modular source package.
 FROM python:3.12-slim
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
