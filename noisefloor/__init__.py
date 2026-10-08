@@ -20,7 +20,7 @@ images — and every result is deterministic and reproducible.
 """
 from __future__ import annotations
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 from . import change, coverage, experiment, forecast, multiple, market, narrative, adapters
 

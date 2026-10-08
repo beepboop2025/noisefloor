@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Update the pinned PyPI publisher to support Core Metadata 2.5 from current
+  package builds. Metadata validation and trusted publishing remain enabled.
+- This is the first published release of the 0.3 feature set. The immutable
+  0.3.0 tag remains recorded; its upload failed before any PyPI publication.
+
 ## 0.3.0
 
 ### New
