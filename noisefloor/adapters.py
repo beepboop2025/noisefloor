@@ -12,7 +12,7 @@ import hashlib
 import json
 import re
 
-from .schemas import CLOCK, MARKET_SERIES, MAX_BODY_BYTES, MAX_METRICS, MAX_SERIES_POINTS, validate
+from .schemas import CLOCK, MARKET_SERIES, MAX_BODY_BYTES, MAX_METRICS, MAX_SERIES_POINTS, validate, parse_utc
 
 
 _FIELDS = {
@@ -63,7 +63,7 @@ def _clock(value, label, *, allow_date_only, issues, index):
                        "detail": "00:00 UTC is an explicit day label, not an observed intraday time."})
         value += "T00:00:00Z"
     validate(value, CLOCK, label)
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).isoformat().replace("+00:00", "Z")
+    return parse_utc(value).isoformat().replace("+00:00", "Z")
 
 
 def _rights(value):
@@ -166,7 +166,7 @@ def from_records(records, *, series_id, kind, unit, source, max_age_seconds,
     if series["source"]["rights"] != source["rights"]:
         issues.append({"code": "rights_downgraded", "detail": "The least permissive explicit row/source status wins."})
     before = [point["observed_at"] for point in series["observations"]]
-    series["observations"].sort(key=lambda point: datetime.fromisoformat(point["observed_at"].replace("Z", "+00:00")))
+    series["observations"].sort(key=lambda point: parse_utc(point["observed_at"]))
     if before != [point["observed_at"] for point in series["observations"]]:
         issues.append({"code": "sorted_by_observation_time"})
     validate(series, MARKET_SERIES, "series")

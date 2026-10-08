@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from statistics import median
 
 from . import change
-from .schemas import MARKET_REQUEST, validate
+from .schemas import MARKET_REQUEST, validate, parse_utc
 
 DEFAULT_POLICY = {
     "baseline_points": 30, "recent_points": 3, "move_threshold": 3.0,
@@ -21,7 +21,7 @@ DEFAULT_POLICY = {
 
 
 def _time(value):
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parse_utc(value)
 
 
 def _hash(value):

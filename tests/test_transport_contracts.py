@@ -162,3 +162,17 @@ def test_cli_invalid_input_is_json_and_nonzero():
                             input='{"series":[],"as_of":NaN}', text=True, capture_output=True, timeout=15)
     assert result.returncode == 2
     assert "error" in json.loads(result.stdout)
+
+
+@pytest.mark.parametrize("fraction, microsecond", [("1",100000),("12",120000),("123",123000),("1234",123400),("12345",123450),("123456",123456)])
+def test_fractional_utc_contract_preserves_precision(fraction, microsecond):
+    from noisefloor.schemas import parse_utc
+    stamp = "2026-10-08T12:00:00." + fraction
+    assert parse_utc(stamp + "Z").microsecond == microsecond
+    assert parse_utc(stamp + "Z") == parse_utc(stamp + "+00:00")
+
+
+def test_submicrosecond_precision_is_not_silently_truncated():
+    from noisefloor.schemas import parse_utc
+    with pytest.raises(ValueError):
+        parse_utc("2026-10-08T12:00:00.1234567Z")

@@ -53,3 +53,8 @@ Large universes can be partitioned by instrument/source/time with a caller-owned
 coverage inventory. Partitioning does not establish multiple-testing validity.
 A managed multi-tenant deployment additionally needs identity, quotas, retention,
 resource isolation and operational acceptance; those belong at the host boundary.
+
+Timestamps use UTC with seconds and at most six fractional digits. Fractional
+seconds are preserved consistently across Python versions; higher precision is
+rejected rather than silently truncated. Nanosecond feeds need an explicit
+upstream time-bucketing contract before adaptation.

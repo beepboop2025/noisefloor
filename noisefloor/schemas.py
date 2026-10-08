@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from datetime import datetime, timezone
 
 MAX_BODY_BYTES = 2 * 1024 * 1024
@@ -81,6 +82,17 @@ NARRATIVE_REQUEST = obj({
 RESULT_SCHEMA = {"type": "object", "additionalProperties": True}
 
 
+def parse_utc(value):
+    """Parse the same microsecond-resolution UTC contract on Python 3.9+."""
+    if not isinstance(value, str):
+        raise ValueError("UTC ISO timestamp required")
+    match = re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(?:Z|\+00:00)", value)
+    if not match:
+        raise ValueError("UTC ISO timestamp required, with at most six fractional digits")
+    fraction = "." + match[2].ljust(6, "0") if match[2] else ""
+    return datetime.fromisoformat(match[1] + fraction + "+00:00")
+
+
 def _kind(value, name):
     return {
         "object": lambda: isinstance(value, dict),
@@ -122,9 +134,7 @@ def validate(value, schema, path="input"):
             raise ValueError(f"{path}: invalid string length")
         if schema.get("format") == "utc-date-time":
             try:
-                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                if "T" not in value or parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
-                    raise ValueError
+                parse_utc(value)
             except ValueError:
                 raise ValueError(f"{path}: UTC ISO timestamp required") from None
     if isinstance(value, list):
