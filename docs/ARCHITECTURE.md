@@ -23,6 +23,8 @@ flowchart LR
 | `schemas` | Bounded strict JSON contracts | Shared across interfaces |
 | `market` | Time/rights/coverage gates, transforms, review policy | Descriptive, no execution |
 | `narrative` | Repetition, entity focus, source ordering | No truth, independence or impact claim |
+| `spectral` | Common-panel spectra, concentration, reference noise bands and rolling diagnostics | Research; no calibrated alarm or factor certification |
+| `dyson` | Seeded symmetric-matrix Brownian simulation | Synthetic reference; not observed data or covariance forecast |
 | Statistical modules | Individual methods and assumptions | Raw scores are not e-values |
 | `mcp_server` | Discovery and shared dispatch | Same result as Python |
 | `http_server` | Framing, bounded requests and privacy-safe logging | No persistent portfolio or credentials |

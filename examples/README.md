@@ -1,5 +1,12 @@
 # Offline synthetic examples
 
+`spectral_products.py` demonstrates the correlation research contract for
+LiquiLens, Seiche, Undertow, Riptide, trading-agent research and Palimpsest
+coverage. Run `python examples/spectral_products.py`, or export a single request
+with `--request seiche` and pipe it to `noisefloor spectral`. Each profile uses
+constructed histories with increasing common exposure; no native product is
+queried or deployed. See [methods and product fit](../docs/SPECTRAL_RISK.md).
+
 Every value, market, company and headline in this directory is **synthetic**.
 The fixtures describe fixed dates, so reruns do not drift with the current clock.
 `rights: permitted` on the generated series describes these synthetic fixtures,

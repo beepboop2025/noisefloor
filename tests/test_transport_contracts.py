@@ -61,7 +61,7 @@ def test_cli_stdin_and_file_match_python(command, name, payload, tmp_path):
 
 def test_capabilities_are_stable_and_do_not_share_mutable_schema():
     first = capabilities()
-    assert len(first["tools"]) == 8
+    assert len(first["tools"]) == 10
     first["tools"][0]["input_schema"]["required"].append("injected")
     assert "injected" not in capabilities()["tools"][0]["input_schema"]["required"]
     assert capabilities() == capabilities()

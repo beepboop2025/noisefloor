@@ -14,6 +14,11 @@ not prove that a market is stable or that a narrative is noise.
 | `coverage` | Historical linear denominator association | Identification of a possible measurement explanation | Causality, exclusion of nonlinear/sample-composition effects or proof a market move is real |
 | `forecast` | Adaptive historical-error interval and complete prequential ledger | Measured coverage, interval width and proper-score comparison | Arbitrary-shift coverage or a guarantee for the next observation |
 | `multiple` | Descriptive ranking by default; conditional e-BH when explicitly enabled | One-family FDR control if every supplied input is a valid e-value | Certification of inputs, automatic repeated-board control or a trade recommendation |
+| `spectral` | Correlation spectrum, concentration and iid reference edges | Review of shared movements in a gated, aligned panel | Finite-sample significance, certified factors, alpha or superior out-of-sample covariance |
+| `dyson` | Seeded real-symmetric Brownian eigenvalue path | A synthetic random-matrix reference | Positive-semidefinite covariance, calibrated market dynamics or a forecast |
+
+The [spectral method and product contract](SPECTRAL_RISK.md) defines transforms,
+interval alignment, shrinkage, matrix normalization and research promotion tests.
 
 Each public result publishes `validity` and `guarantee`; the latter is `null`
 where no theorem is established for the supplied data. Input numbers must be
