@@ -1,0 +1,6 @@
+# Inside the existing TLS site, before its fallback handler.
+# NoiseFloor 0.4+ owns CORS and OPTIONS; proxy-injected CORS headers can
+# duplicate upstream values and cause browsers to reject successful requests.
+handle_path /noisefloor/* {
+    reverse_proxy 127.0.0.1:8795
+}
