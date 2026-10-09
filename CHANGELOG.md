@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0.dev0 (unreleased research candidate)
+## 0.4.0 (2026-10-09)
 
 - Add source-gated correlation spectra, iid Marchenko-Pastur reference edges,
   concentration/effective rank, an experimental in-band shrinkage candidate and

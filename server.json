@@ -3,7 +3,7 @@
   "name": "io.github.beepboop2025/noisefloor",
   "title": "NoiseFloor — market attention and evidence checks",
   "description": "Offline market diagnostics, news repetition, data coverage and statistical checks for AI agents.",
-  "version": "0.4.0.dev0",
+  "version": "0.4.0",
   "repository": {
     "url": "https://github.com/beepboop2025/noisefloor",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "noisefloor",
-      "version": "0.4.0.dev0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       }

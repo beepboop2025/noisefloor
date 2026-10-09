@@ -10,17 +10,15 @@ NoiseFloor checks market observations, groups repeated headlines, exposes data
 gaps and grades forecasts. It does not fetch feeds, call a model, retain your
 portfolio or execute trades.
 
-The **0.4 development candidate** adds correlation spectra, shared-factor
-concentration, an experimental correlation-cleaning candidate and rolling
-diagnostics, plus a separate synthetic Dyson Brownian-motion simulator. Install
-this checkout with `pip install -e '.[dev]'` to use them; the published 0.3.1
-package and hosted service must be checked separately. See the
+Version **0.4.0** adds correlation spectra, shared-factor concentration, an
+experimental correlation-cleaning candidate and rolling diagnostics, plus a
+separate synthetic Dyson Brownian-motion simulator. See the
 [product applications and methods](docs/SPECTRAL_RISK.md).
 
 ## Try the complete workflow
 
 ```bash
-pip install 'noisefloor>=0.3.1'
+pip install 'noisefloor==0.4.0'
 noisefloor capabilities
 # From this repository; these fixtures are synthetic, not live market evidence:
 noisefloor market examples/market.json
@@ -100,14 +98,14 @@ Version 0.3 corrects overstated guarantees in 0.2; read the
 ## AI agents and HTTP
 
 ```json
-{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.3.1","noisefloor-mcp"]}}}
+{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.4.0","noisefloor-mcp"]}}}
 ```
 
-Ten MCP tools in this checkout: `market_assessment`, `narrative_triage`, `ab_test`,
+Ten MCP tools: `market_assessment`, `narrative_triage`, `ab_test`,
 `did_it_change`, `real_or_sampling`, `forecast_next`, `score_forecasts`,
 `which_metrics_matter`, `spectral_assessment`, `dyson_reference`. Results include
-structured JSON. The two spectral tools require the development candidate;
-the pinned published configuration above retains the original eight tools.
+structured JSON. The spectral assessment is descriptive research; the Dyson
+reference is a synthetic simulation, not a fitted market model.
 
 ```bash
 noisefloor-mcp-http --host 127.0.0.1 --port 8792
@@ -116,12 +114,12 @@ curl -H 'Content-Type: application/json' --data-binary @examples/market.json htt
 ```
 
 REST: `POST /v1/market/assess`, `POST /v1/narrative/triage`.
-Candidate research routes: `POST /v1/spectral/assess`, `POST /v1/research/dyson`.
+Research routes: `POST /v1/spectral/assess`, `POST /v1/research/dyson`.
 Discovery: `GET /v1/capabilities`, `GET /openapi.json`; MCP: `POST /mcp`.
 Self-host behind your TLS/authentication and quota layer. HTTP logs bounded
 operation/outcome labels, not submitted observations, titles or request targets.
 
-Previously published hosted MCP: `https://api.seiche.info/noisefloor/mcp`.
+Hosted MCP: `https://api.seiche.info/noisefloor/mcp`.
 Check its health/version and tool list before assuming a package release is
 deployed there. Package, registry and host acceptance are separate states.
 
