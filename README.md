@@ -15,6 +15,14 @@ experimental correlation-cleaning candidate and rolling diagnostics, plus a
 separate synthetic Dyson Brownian-motion simulator. See the
 [product applications and methods](docs/SPECTRAL_RISK.md).
 
+Try the [live correlation and Dyson workbench](https://liquilens.in/agents/correlation/)
+with explicitly synthetic examples for LiquiLens, Seiche, Undertow, Riptide,
+Palimpsest and trading-agent research. The
+[API client kit](https://beepboop2025.github.io/financial-evidence-skills/api/noisefloor/)
+includes OpenAPI, Postman, Bruno, HTTP and local Python workflows. Browser
+requests go to the public service only when you run them; use Python locally
+for private panels.
+
 ## Try the complete workflow
 
 ```bash
@@ -113,7 +121,10 @@ curl http://127.0.0.1:8792/v1/capabilities
 curl -H 'Content-Type: application/json' --data-binary @examples/market.json http://127.0.0.1:8792/v1/market/assess
 ```
 
-REST: `POST /v1/market/assess`, `POST /v1/narrative/triage`.
+REST: `POST /v1/market/assess`, `POST /v1/narrative/triage`,
+`POST /v1/spectral/assess`, `POST /v1/research/dyson`.
+The hosted API base is `https://api.seiche.info/noisefloor`; the hosted MCP
+endpoint is `https://api.seiche.info/noisefloor/mcp`.
 Research routes: `POST /v1/spectral/assess`, `POST /v1/research/dyson`.
 Discovery: `GET /v1/capabilities`, `GET /openapi.json`; MCP: `POST /mcp`.
 Self-host behind your TLS/authentication and quota layer. HTTP logs bounded
