@@ -189,6 +189,44 @@ def test_rest_validation_returns_422_and_preserves_data_privacy(base_url, capfd)
     assert "tool=narrative_triage outcome=error" in log
 
 
+@pytest.mark.parametrize("path,name,payload", [
+    ("/v1/spectral/assess", "spectral_assessment", {"series": [], "as_of": "2026-10-09T00:00:00Z"}),
+    ("/v1/research/dyson", "dyson_reference", {"dimension": 3, "steps": 5, "seed": 6116}),
+])
+def test_spectral_rest_and_mcp_share_results(base_url, path, name, payload):
+    from noisefloor.mcp_server import call_tool
+    expected = call_tool(name, payload)
+    status, actual = _post(base_url, payload, path=path)
+    assert status == 200
+    assert actual == expected
+    status, reply = _post(base_url, {"jsonrpc": "2.0", "id": 61, "method": "tools/call",
+                                   "params": {"name": name, "arguments": payload}})
+    assert status == 200
+    assert reply["result"]["structuredContent"] == expected
+
+
+def test_full_product_panel_works_over_rest(base_url):
+    from examples.spectral_products import request_for
+    from noisefloor import spectral
+    request = request_for("seiche")
+    status, actual = _post(base_url, request, path="/v1/spectral/assess")
+    assert status == 200
+    assert actual == spectral.assess(**request)
+    assert actual["status"] == "assessed"
+
+
+def test_research_routes_reject_bad_input_without_logging_observations(base_url, capfd):
+    from examples.spectral_products import request_for
+    request = request_for("liquilens")
+    marker = "private-institution-never-log"
+    request["series"][0]["id"] = marker
+    request["series"][0]["observations"][0]["value"] = True
+    capfd.readouterr()
+    status, reply = _post(base_url, request, path="/v1/spectral/assess")
+    assert status == 422 and "error" in reply
+    assert marker not in capfd.readouterr().err
+
+
 def test_rpc_malformed_batch_member_does_not_prevent_following_ping(base_url):
     status, reply = _post(base_url, [None, {"jsonrpc": "2.0", "id": 2, "method": "ping"}])
     assert status == 200

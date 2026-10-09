@@ -61,6 +61,21 @@ MARKET_POLICY = obj({
 MARKET_REQUEST = obj({
     "series": array(MARKET_SERIES, MAX_METRICS), "as_of": CLOCK, "policy": MARKET_POLICY,
 }, ("series", "as_of"))
+SPECTRAL_POLICY = obj({
+    "window_points": {"type": "integer", "minimum": 20, "maximum": 512},
+    "step_points": {"type": "integer", "minimum": 1, "maximum": 512},
+    "max_windows": {"type": "integer", "minimum": 1, "maximum": 8},
+})
+SPECTRAL_REQUEST = obj({
+    "series": array(MARKET_SERIES, MAX_METRICS), "as_of": CLOCK,
+    "policy": SPECTRAL_POLICY,
+}, ("series", "as_of"))
+DYSON_REQUEST = obj({
+    "dimension": {"type": "integer", "minimum": 2, "maximum": 16},
+    "steps": {"type": "integer", "minimum": 1, "maximum": 100},
+    "dt": {"type": "number", "minimum": 0.000001, "maximum": 1},
+    "seed": {"type": "integer", "minimum": 0, "maximum": 2 ** 32 - 1},
+})
 NARRATIVE_SOURCE = obj({
     "id": string(), "url": string(2048),
     "kind": {"type": "string", "enum": ["primary", "reporting", "commentary"]},

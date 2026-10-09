@@ -252,7 +252,7 @@ def test_server_initializes_and_lists_every_tool():
     names = {t["name"] for t in replies[1]["result"]["tools"]}
     assert names == {"ab_test", "did_it_change", "real_or_sampling",
                      "forecast_next", "score_forecasts", "which_metrics_matter",
-                     "market_assessment", "narrative_triage"}
+                     "market_assessment", "narrative_triage", "spectral_assessment", "dyson_reference"}
 
 
 def test_server_runs_a_tool_and_returns_json():

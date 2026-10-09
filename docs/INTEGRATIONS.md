@@ -6,7 +6,9 @@ assessment is descriptive: it does not establish an investable effect, causal
 explanation, statistical significance or trading permission. Narrative grouping
 organizes supplied claims; it does not verify their truth or independence.
 
-These examples describe the 0.3.1 implementation. Publication and the version of
+The original recipes describe the 0.3.1 implementation. The 0.4 development
+candidate adds [spectral product recipes](SPECTRAL_RISK.md) and the
+`spectral_assessment` callback in `examples/agent_tools.py`. Publication and the version of
 an existing hosted endpoint require separate release evidence. A successful
 local example does not establish that a public service has been upgraded.
 

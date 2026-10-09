@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0.dev0 (unreleased research candidate)
+
+- Add source-gated correlation spectra, iid Marchenko-Pastur reference edges,
+  concentration/effective rank, an experimental in-band shrinkage candidate and
+  rolling diagnostics. No finite-sample significance or trading claim.
+- Add a seeded real-symmetric Brownian matrix simulator for synthetic eigenvalue
+  repulsion experiments, expressly separate from market/covariance evidence.
+- Expose both through Python, CLI, REST, MCP and capability/OpenAPI discovery.
+- Reuse market source/clock gates and existing offline product adapters. Add
+  exact interval alignment, missing-panel blockers and constant-series checks.
+- Document LiquiLens, Seiche, Undertow, Riptide, Palimpsest and trading-agent
+  applications with executable synthetic examples. Native deployment and
+  empirical validation remain separate steps.
+
 ## 0.3.1
 
 - Update the pinned PyPI publisher to support Core Metadata 2.5 from current

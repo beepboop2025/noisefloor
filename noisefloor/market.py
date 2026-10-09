@@ -65,7 +65,8 @@ def _correlation(xs, ys):
     return max(-1.0, min(1.0, math.fsum(x * y for x, y in zip(dx, dy))))
 
 
-def _inspect(item, as_of, policy):
+def _prepare_series(item, as_of):
+    """Shared source gates and contiguous tail; never fill a missing observation."""
     obs = item["observations"]
     times = [_time(p["observed_at"]) for p in obs]
     if any(b <= a for a, b in zip(times, times[1:])):
@@ -109,7 +110,15 @@ def _inspect(item, as_of, policy):
     if obs and obs[-1]["value"] is None:
         issues.append("latest_value_missing")
 
-    tail = obs[start:]
+    return {"observations": obs, "times": times, "tail": obs[start:],
+            "issues": issues, "warnings": warnings, "age": age, "gaps": gaps}
+
+
+def _inspect(item, as_of, policy):
+    prepared = _prepare_series(item, as_of)
+    obs, tail = prepared["observations"], prepared["tail"]
+    issues, warnings = prepared["issues"], prepared["warnings"]
+    age, gaps = prepared["age"], prepared["gaps"]
     derived = []
     representation_errors = []
     if item["kind"] == "price":

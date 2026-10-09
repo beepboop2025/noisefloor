@@ -20,8 +20,8 @@ images — and every result is deterministic and reproducible.
 """
 from __future__ import annotations
 
-__version__ = "0.3.1"
+__version__ = "0.4.0.dev0"
 
-from . import change, coverage, experiment, forecast, multiple, market, narrative, adapters
+from . import change, coverage, experiment, forecast, multiple, market, narrative, adapters, spectral, dyson
 
-__all__ = ["change", "coverage", "experiment", "forecast", "multiple", "market", "narrative", "adapters"]
+__all__ = ["change", "coverage", "experiment", "forecast", "multiple", "market", "narrative", "adapters", "spectral", "dyson"]

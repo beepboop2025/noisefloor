@@ -1,4 +1,4 @@
-"""Offline JSON assessment: noisefloor market|narrative|capabilities."""
+"""Offline JSON assessment: noisefloor market|narrative|spectral|dyson|capabilities."""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,7 @@ from .schemas import MAX_BODY_BYTES, dumps, loads
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("market", "narrative", "capabilities"))
+    parser.add_argument("command", choices=("market", "narrative", "spectral", "dyson", "capabilities"))
     parser.add_argument("path", nargs="?", default="-", help="JSON file, or - for stdin")
     parser.add_argument("--input", dest="input_path", help="JSON file, or - for stdin")
     args = parser.parse_args(argv)
@@ -29,7 +29,8 @@ def main(argv=None):
             else:
                 with Path(path).open("rb") as stream:
                     raw = stream.read(MAX_BODY_BYTES + 1)
-            result = call_tool({"market": "market_assessment", "narrative": "narrative_triage"}[args.command], loads(raw))
+            result = call_tool({"market": "market_assessment", "narrative": "narrative_triage",
+                                "spectral": "spectral_assessment", "dyson": "dyson_reference"}[args.command], loads(raw))
         print(dumps(result))
         return 0
     except (ValueError, KeyError, TypeError, OverflowError, OSError) as exc:
