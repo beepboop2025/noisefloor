@@ -1,5 +1,7 @@
 # NoiseFloor
 
+[![MCP Badge](https://lobehub.com/badge/mcp/beepboop2025-noisefloor)](https://lobehub.com/mcp/beepboop2025-noisefloor)
+
 **What changed, what is repeated, and what can the evidence support?**
 
 A modular, offline toolkit for research desks, monitoring systems and AI agents.
