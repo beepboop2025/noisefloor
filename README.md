@@ -12,6 +12,20 @@ NoiseFloor checks market observations, groups repeated headlines, exposes data
 gaps and grades forecasts. It does not fetch feeds, call a model, retain your
 portfolio or execute trades.
 
+## Start with your research task
+
+| Your task | First step | What stays with the result |
+|---|---|---|
+| Inspect shared-factor concentration | [Open the correlation workbench](https://liquilens.in/agents/correlation/) and run a labeled synthetic example | Alignment, source restrictions, gaps and reference assumptions |
+| Review changing market observations | Run `noisefloor market examples/market.json` from this repository | Observation clocks, visibility gaps and descriptive review priorities |
+| Reduce repeated headlines | Run `noisefloor narrative examples/narrative.json` | Original events, changed quantities and conflicting reports |
+| Connect an API or MCP client | [Open the client kit](https://beepboop2025.github.io/financial-evidence-skills/api/noisefloor/) | The same bounded input contract across transports |
+
+Use Python or the CLI locally for private observations. The browser workbench
+submits the selected example only when you run it; its bundled examples are
+synthetic. Public financial-source retrieval is a separate workflow in the
+[Financial Evidence connection guide](https://beepboop2025.github.io/financial-evidence-skills/connect/).
+
 Version **0.4.0** adds correlation spectra, shared-factor concentration, an
 experimental correlation-cleaning candidate and rolling diagnostics, plus a
 separate synthetic Dyson Brownian-motion simulator. See the
