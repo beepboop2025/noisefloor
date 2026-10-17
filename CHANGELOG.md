@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 (2026-10-18)
+
+- Make the first PyPI workflow self-contained after installation, with synthetic
+  narrative triage inputs and matching Python, CLI and local HTTP examples.
+- Add task-based links to Financial Evidence, Seiche, LiquiLens, Undertow and
+  Palimpsest, plus actionable package metadata and absolute documentation links.
+- Keep existing runtime behavior and zero runtime dependencies. This package
+  release does not promote the hosted service or expand source permissions.
+
 ## 0.4.0 (2026-10-09)
 
 - Add source-gated correlation spectra, iid Marchenko-Pastur reference edges,
