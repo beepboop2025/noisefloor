@@ -17,8 +17,8 @@ portfolio or execute trades.
 | Your task | First step | What stays with the result |
 |---|---|---|
 | Inspect shared-factor concentration | [Open the correlation workbench](https://liquilens.in/agents/correlation/) and run a labeled synthetic example | Alignment, source restrictions, gaps and reference assumptions |
-| Review changing market observations | Run `noisefloor market examples/market.json` from this repository | Observation clocks, visibility gaps and descriptive review priorities |
-| Reduce repeated headlines | Run `noisefloor narrative examples/narrative.json` | Original events, changed quantities and conflicting reports |
+| Review changing market observations | Follow the [market input guide](https://github.com/beepboop2025/noisefloor/blob/main/docs/MARKET_WORKFLOWS.md) with your permitted observations | Observation clocks, visibility gaps and descriptive review priorities |
+| Reduce repeated headlines | Run the self-contained Python example below | Original events, changed quantities and conflicting reports |
 | Connect an API or MCP client | [Open the client kit](https://beepboop2025.github.io/financial-evidence-skills/api/noisefloor/) | The same bounded input contract across transports |
 
 Use Python or the CLI locally for private observations. The browser workbench
@@ -26,10 +26,10 @@ submits the selected example only when you run it; its bundled examples are
 synthetic. Public financial-source retrieval is a separate workflow in the
 [Financial Evidence connection guide](https://beepboop2025.github.io/financial-evidence-skills/connect/).
 
-Version **0.4.0** adds correlation spectra, shared-factor concentration, an
+Release **0.4.0** introduced correlation spectra, shared-factor concentration, an
 experimental correlation-cleaning candidate and rolling diagnostics, plus a
 separate synthetic Dyson Brownian-motion simulator. See the
-[product applications and methods](docs/SPECTRAL_RISK.md).
+[product applications and methods](https://github.com/beepboop2025/noisefloor/blob/main/docs/SPECTRAL_RISK.md).
 
 Try the [live correlation and Dyson workbench](https://liquilens.in/agents/correlation/)
 with explicitly synthetic examples for LiquiLens, Seiche, Undertow, Riptide,
@@ -39,29 +39,74 @@ includes OpenAPI, Postman, Bruno, HTTP and local Python workflows. Browser
 requests go to the public service only when you run them; use Python locally
 for private panels.
 
-## Try the complete workflow
+## Get your first result
+
+Install the package; no repository checkout, API key or model is required:
 
 ```bash
-pip install 'noisefloor==0.4.0'
+python3 -m pip install --upgrade noisefloor
 noisefloor capabilities
-# From this repository; these fixtures are synthetic, not live market evidence:
-noisefloor market examples/market.json
-noisefloor narrative examples/narrative.json
-python examples/demo.py
 ```
+
+Run this Python example with two explicitly synthetic headlines. The fixed
+observation clock makes the result reproducible:
 
 ```python
 import json
-from noisefloor import market, narrative
+from pathlib import Path
+from noisefloor import narrative
 
-request = json.load(open("examples/market.json"))
-report = market.assess(**request)
-print(report["attention_queue"])
-print(report["visibility_gaps"])
-
-news = json.load(open("examples/narrative.json"))
-print(narrative.triage(**news)["attention_queue"])
+primary = {
+    "id": "synthetic-filing",
+    "title": "Example Bank reports deposit growth of 5 percent",
+    "published_at": "2026-10-08T10:00:00Z",
+    "entities": ["EXAMPLE-BANK"],
+    "source": {"id": "synthetic-issuer", "kind": "primary"},
+}
+copy = {
+    **primary,
+    "id": "synthetic-headline",
+    "source": {"id": "synthetic-wire", "kind": "reporting"},
+}
+request = {
+    "events": [primary, copy],
+    "as_of": "2026-10-08T12:00:00Z",
+    "focus": ["EXAMPLE-BANK"],
+}
+report = narrative.triage(**request)
+print(len(report["events"]), len(report["attention_queue"]))  # 2 retained, 1 to review
+print(report["counts"]["repeated_wording"])  # 1 repeated headline
+Path("narrative.json").write_text(json.dumps(request), encoding="utf-8")
 ```
+
+Both original events remain in the report. Repeated wording is grouped; it does
+not establish truth, independent confirmation or permission to trade. Source
+kinds and entity assignments are supplied by the caller.
+
+The example also writes `narrative.json`, which you can pass to the installed CLI:
+
+```bash
+noisefloor narrative narrative.json
+```
+
+## Connect your financial research
+
+NoiseFloor analyzes inputs you supply. These products provide separate routes
+to financial context and evidence; consult each product's coverage and source
+rights before bringing observations into a local assessment.
+
+| Research task | Product and next step |
+|---|---|
+| Retrieve and save a source-aware financial review from Python or an AI agent | [Financial Evidence first review](https://beepboop2025.github.io/financial-evidence-skills/agents/FIRST_REVIEW.md) |
+| Explore funding and foreign-exchange context | [Seiche](https://seiche.info/) · [API and MCP guide](https://seiche.info/developers) |
+| Inspect covered bank disclosures and institutional evidence | [LiquiLens](https://liquilens.in/) · [developer guide](https://liquilens.in/developers/) |
+| Examine indicative Bitcoin exit liquidity | [Undertow](https://liquilens-undertow.com/) · [developer guide](https://liquilens-undertow.com/developers/) |
+| Explore China and regional public-record coverage | [Palimpsest](https://www.palimpsest.info/) · [developer guide](https://www.palimpsest.info/developers.html) |
+
+Use the [connection guide](https://beepboop2025.github.io/financial-evidence-skills/connect/)
+to choose a hosted API or MCP route. Installing NoiseFloor does not subscribe you
+to feeds, enable source collection or send your local observations to those
+products.
 
 ## Market attention
 
@@ -117,12 +162,12 @@ multiple.select({"metric_a": 25.0, "metric_b": 1.0}, valid_evalues=True)
 `valid_evalues=True` is a declaration, not certification. A single-family e-BH
 guarantee does not justify repeatedly selecting families or unqualified peeking.
 Version 0.3 corrects overstated guarantees in 0.2; read the
-[methods](docs/STATISTICAL_METHODS.md) and [migration notes](CHANGELOG.md).
+[methods](https://github.com/beepboop2025/noisefloor/blob/main/docs/STATISTICAL_METHODS.md) and [migration notes](https://github.com/beepboop2025/noisefloor/blob/main/CHANGELOG.md).
 
 ## AI agents and HTTP
 
 ```json
-{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor==0.4.0","noisefloor-mcp"]}}}
+{"mcpServers":{"noisefloor":{"command":"uvx","args":["--from","noisefloor","noisefloor-mcp"]}}}
 ```
 
 Ten MCP tools: `market_assessment`, `narrative_triage`, `ab_test`,
@@ -133,8 +178,13 @@ reference is a synthetic simulation, not a fitted market model.
 
 ```bash
 noisefloor-mcp-http --host 127.0.0.1 --port 8792
+```
+
+In another terminal, use the `narrative.json` written by the Python example:
+
+```bash
 curl http://127.0.0.1:8792/v1/capabilities
-curl -H 'Content-Type: application/json' --data-binary @examples/market.json http://127.0.0.1:8792/v1/market/assess
+curl -H 'Content-Type: application/json' --data-binary @narrative.json http://127.0.0.1:8792/v1/narrative/triage
 ```
 
 REST: `POST /v1/market/assess`, `POST /v1/narrative/triage`,
@@ -162,17 +212,19 @@ without importing its SDK. LiquiLens institution evidence, Seiche funding,
 Undertow liquidity and Palimpsest coverage can remain separate while using common
 diagnostics. This does not imply those products already run this release.
 
-- [Architecture and extension contracts](docs/ARCHITECTURE.md)
-- [Research workflows](docs/MARKET_WORKFLOWS.md)
-- [Correlation spectra, Dyson reference and product applications](docs/SPECTRAL_RISK.md)
-- [Adapters, frameworks and deployment recipes](docs/INTEGRATIONS.md)
-- [Release procedure](docs/RELEASE.md)
+- [Architecture and extension contracts](https://github.com/beepboop2025/noisefloor/blob/main/docs/ARCHITECTURE.md)
+- [Research workflows](https://github.com/beepboop2025/noisefloor/blob/main/docs/MARKET_WORKFLOWS.md)
+- [Correlation spectra, Dyson reference and product applications](https://github.com/beepboop2025/noisefloor/blob/main/docs/SPECTRAL_RISK.md)
+- [Adapters, frameworks and deployment recipes](https://github.com/beepboop2025/noisefloor/blob/main/docs/INTEGRATIONS.md)
+- [Release procedure](https://github.com/beepboop2025/noisefloor/blob/main/docs/RELEASE.md)
 
 Request/policy SHA-256 digests support identity checks and replay; they are not
 signatures or proof of source truth. No runtime network, model, database or paid
 API dependency is required.
 
 ## Verification
+
+For contributors working from a source checkout:
 
 ```bash
 pip install -e '.[dev]'
@@ -186,5 +238,5 @@ checks do not establish live-market accuracy, profitability or failure predictio
 
 ## Origin and licence
 
-Built from measurement-quality work for [Palimpsest](https://palimpsest.info).
+Built from measurement-quality work for [Palimpsest](https://www.palimpsest.info/).
 MIT. Source and methods are inspectable; results retain their assumptions.
