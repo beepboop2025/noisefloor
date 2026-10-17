@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2 (2026-10-18)
+
+- Explain when to choose each of the ten MCP tools, required history, defaults,
+  numerical units, result fields, error cases and statistical limits.
+- Describe every input property, including nested source, clock and policy
+  metadata, across MCP, capability discovery and REST/OpenAPI schemas.
+- Preserve tool names, accepted inputs, validation bounds, calculations and
+  transport behavior. No source permissions or inference guarantees expand.
+- Package publication, hosted-service promotion and third-party marketplace
+  evaluations remain separate release and verification steps.
+
 ## 0.4.1 (2026-10-18)
 
 - Make the first PyPI workflow self-contained after installation, with synthetic
