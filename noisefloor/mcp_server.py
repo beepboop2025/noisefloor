@@ -6,10 +6,11 @@ from copy import deepcopy
 
 from . import __version__, change, coverage, experiment, forecast, multiple
 from .identity import implementation_sha256
+from .output_schemas import ERROR_SCHEMA, output_schema, success_schema
 from .schemas import (
     CLOCK, MARKET_REQUEST, NARRATIVE_REQUEST, SPECTRAL_REQUEST, DYSON_REQUEST, MAX_BATCH, MAX_BODY_BYTES,
     MAX_EVENTS, MAX_METRICS, MAX_SERIES_POINTS, NUMBER, NUMBERS, POSITIVE,
-    PROBABILITY, RESULT_SCHEMA, described, dumps, loads, obj, string, validate,
+    PROBABILITY, described, dumps, loads, obj, string, validate,
 )
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -277,7 +278,8 @@ def capabilities():
         "schema_version": "noisefloor.capabilities.v1", "name": SERVER_NAME, "version": SERVER_VERSION,
         "implementation_sha256": implementation_sha256(),
         "transports": ["python", "cli", "stdio", "streamable-http", "rest"],
-        "tools": [{"name": name, "description": entry[0], "input_schema": deepcopy(entry[1])}
+        "tools": [{"name": name, "description": entry[0], "input_schema": deepcopy(entry[1]),
+                   "output_schema": output_schema(name)}
                   for name, entry in sorted(TOOLS.items())],
         "rest": dict(REST_TOOLS), "openapi": "/openapi.json",
         "limits": {"max_body_bytes": MAX_BODY_BYTES, "max_series": MAX_METRICS,
@@ -301,9 +303,10 @@ def openapi():
         paths[path] = {"post": {
             "operationId": name, "summary": description,
             "requestBody": {"required": True, "content": {"application/json": {"schema": deepcopy(schema)}}},
-            "responses": {"200": {"description": "Assessment", "content": {"application/json": {"schema": RESULT_SCHEMA}}},
-                          "400": {"description": "Malformed JSON"}, "422": {"description": "Invalid input"},
-                          "413": {"description": "Request too large"}},
+            "responses": {"200": {"description": "Assessment", "content": {"application/json": {"schema": success_schema(name)}}},
+                          "400": {"description": "Malformed JSON", "content": {"application/json": {"schema": deepcopy(ERROR_SCHEMA)}}},
+                          "422": {"description": "Invalid input", "content": {"application/json": {"schema": deepcopy(ERROR_SCHEMA)}}},
+                          "413": {"description": "Request too large", "content": {"application/json": {"schema": deepcopy(ERROR_SCHEMA)}}}},
         }}
     paths["/v1/capabilities"] = {"get": {"operationId": "capabilities", "responses": {"200": {"description": "Capabilities"}}}}
     paths["/healthz"] = {"get": {"operationId": "health", "responses": {"200": {"description": "Health"}}}}
@@ -342,7 +345,7 @@ def handle(msg):
         return _result(mid, {})
     if method == "tools/list":
         return _result(mid, {"tools": [{"name": name, "title": TOOL_TITLES[name], "description": desc,
-            "inputSchema": deepcopy(schema), "outputSchema": RESULT_SCHEMA,
+            "inputSchema": deepcopy(schema), "outputSchema": output_schema(name),
             "annotations": {"title": TOOL_TITLES[name], **TOOL_ANNOTATIONS}}
             for name, (desc, schema, _fn) in sorted(TOOLS.items())]})
     if method == "prompts/list":

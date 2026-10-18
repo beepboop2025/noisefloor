@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.3 (2026-10-18)
+
+- Describe the existing results of all ten tools with typed output schemas,
+  including short-history, partial, null and source-rights states. MCP discovery
+  and capabilities share the same contract; REST documents successful results
+  separately from existing error payloads.
+- Preserve caller-named A/B arms, including a valid arm named `error`, and the
+  existing structured MCP error object. Calculations, input validation, tool
+  names and returned tool payloads are unchanged.
+- Validate schemas and actual branch results with a development-only JSON
+  Schema validator. Runtime dependencies remain empty. Package publication and
+  any hosted deployment require separate verification.
+
 ## 0.4.2 (2026-10-18)
 
 - Explain when to choose each of the ten MCP tools, required history, defaults,
