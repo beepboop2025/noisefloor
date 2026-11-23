@@ -42,7 +42,7 @@ def test_initialize_over_http(base_url):
     assert status == 200
     assert reply["result"]["serverInfo"] == {
         "name": "noisefloor", "version": SERVER_VERSION,
-        "title": "noisefloor — is this number real?",
+        "title": "noisefloor: is this number real?",
         "websiteUrl": "https://github.com/beepboop2025/noisefloor"}
 
 

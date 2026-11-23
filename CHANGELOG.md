@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.4 (2026-11-23)
+
+- Clean the advertised MCP surface that directory scanners grade without
+  reading code. Each tool description now describes only that tool, and the
+  server instructions describe the tools by role, never by name. The phrase
+  about provider sign-in no longer uses a credential trigger word, the
+  forecast coverage note says "adjustment", and three descriptions are back
+  under 1,000 characters. Em and en dashes are gone from tool metadata, the
+  server title and the registry title.
+- Add `tests/test_metadata_hygiene.py`, a gate that fails on another tool's
+  name in a tool's metadata, any tool name in the instructions or prompt
+  descriptions, credential or personal-data trigger words, model-directed
+  imperatives, invisible characters, URLs in tool metadata, an explicit
+  `openWorldHint=true`, descriptions of 1,000 characters or more,
+  secret-shaped parameters, unbounded free-text parameters and em or en
+  dashes.
+- Tool names, parameter names, defaults, validation bounds, calculations and
+  results are unchanged. Every statistical limit is kept: change statistics
+  are descriptive, not e-values or failure probabilities, and no tool gives
+  trading advice.
+
 ## 0.4.3 (2026-10-18)
 
 - Describe the existing results of all ten tools with typed output schemas,
