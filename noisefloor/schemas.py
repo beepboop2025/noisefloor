@@ -55,7 +55,7 @@ MARKET_SOURCE = obj({
 }, ("id", "rights"))
 MARKET_SERIES = obj({
     "id": described(string(), "Unique series identifier within this request, used in results and cross-series relationships."),
-    "kind": {"type": "string", "enum": ["price", "return", "level", "spread", "rate", "count"], "description": "Measurement type. Both assessment tools convert price to log returns. market_assessment keeps other values unchanged; spectral_assessment keeps return values and first-differences level, spread, rate and count."},
+    "kind": {"type": "string", "enum": ["price", "return", "level", "spread", "rate", "count"], "description": "Measurement type. Prices always become log returns. The source-aware market review keeps other values unchanged; the correlation panel review keeps return values and first-differences level, spread, rate and count."},
     "unit": described(string(64), "Consistent measurement unit for all observations, for example USD, decimal_return, basis_points or count. No currency conversion, percent conversion or economic comparability is inferred."),
     "source": described(MARKET_SOURCE, "Source identity, optional attribution URL and declared usage rights. All are caller-supplied, not attestations."),
     "max_age_seconds": described(POSITIVE, "Maximum allowed age in seconds of the last observation relative to as_of. Older data remains insufficient_visibility; choose an appropriate cadence-specific limit."),
@@ -81,7 +81,7 @@ SPECTRAL_POLICY = obj({
     "max_windows": {"type": "integer", "minimum": 1, "maximum": 8, "default": 4, "description": "Maximum recent complete windows returned, in chronological order; default 4. Fewer are returned when only a shorter eligible history is available."},
 })
 SPECTRAL_REQUEST = obj({
-    "series": described(array(MARKET_SERIES, MAX_METRICS), "Caller-defined comparable panel, normally 2–32 series with unique ids. All members must pass source and clock gates. Both endpoints of each interval must align; rejected members are never silently removed."),
+    "series": described(array(MARKET_SERIES, MAX_METRICS), "Caller-defined comparable panel, normally 2 to 32 series with unique ids. All members must pass source and clock gates. Both endpoints of each interval must align; rejected members are never silently removed."),
     "as_of": described(CLOCK, "UTC cutoff for freshness and availability, for example 2026-01-01T12:00:00Z. Caller timestamps do not certify historical as-published vintages."),
     "policy": described(SPECTRAL_POLICY, "Optional rolling-window sizes; omitted fields default to 60 intervals, 20-interval steps and at most 4 windows."),
 }, ("series", "as_of"))
